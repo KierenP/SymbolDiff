@@ -39,4 +39,4 @@ jobs:
       
     - name: Run VSTest
       working-directory: x64\${{env.BUILD_CONFIGURATION}}\
-      run: vstest.console.exe /Platform:x64 .\UnitTests.dll
+      run: vstest.console.exe /Platform:x64 UnitTest.dll
