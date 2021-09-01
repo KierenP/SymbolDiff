@@ -5,6 +5,7 @@
 #include <vector>
 #include <numeric>
 #include <typeindex>
+#include <stdexcept>
 
 int ExpressionBase::Priority() const
 {
@@ -82,7 +83,7 @@ std::unique_ptr<ExpressionBase> BuildExpression(std::vector<Token> input)
             t = new OperatorExponent{ *left, *right };
             break;
         default:
-            throw "Could not match operator in OldExpression::Evaluate";
+            throw std::invalid_argument("Unknown operator: " + std::to_string(tokens.top().GetOperator()));
         }
             
         tokens.pop();
@@ -134,15 +135,15 @@ std::unique_ptr<ExpressionBase> BuildExpression(std::vector<Token> input)
             tokens.push(token);
         }
         else
-            throw "Could not match token in BuildExpressionTree";
+            throw std::invalid_argument("Detected operator with unknown priority: " + std::to_string(tokens.top().GetOperator()));
     }
 
     return std::unique_ptr<ExpressionBase>(nodes.top());
 }
 
-std::unique_ptr<ExpressionBase> Differentiate(std::string str, Token::variable_t wrt)
+std::string Differentiate(std::string str, Token::variable_t wrt)
 {
-    return BuildExpression(Tokenize(str))->Derivative(wrt)->Simplified();
+    return BuildExpression(Tokenize(str))->Derivative(wrt)->Simplified()->Print();
 }
 
 bool ExpressionBase::operator==(const ExpressionBase& other) const

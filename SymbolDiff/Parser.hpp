@@ -157,4 +157,4 @@ public:
 };
 
 std::unique_ptr<ExpressionBase> BuildExpression(std::vector<Token> input);
-std::unique_ptr<ExpressionBase> Differentiate(std::string str, Token::variable_t wrt);
+std::string Differentiate(std::string str, Token::variable_t wrt);
