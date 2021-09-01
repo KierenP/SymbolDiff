@@ -6,6 +6,9 @@
 #include <numeric>
 #include <typeindex>
 #include <stdexcept>
+#include <algorithm>
+#include <iterator>
+#include <random>
 
 int ExpressionBase::Priority() const
 {
@@ -146,6 +149,42 @@ std::string Differentiate(std::string str, Token::variable_t wrt)
     return BuildExpression(Tokenize(str))->Derivative(wrt)->Simplified()->Print();
 }
 
+bool ExpressionsNumericallyEqual(ExpressionBase& lhs, ExpressionBase& rhs)
+{
+    // Exact match saves us work
+    if (lhs == rhs) return true;    
+
+    auto l = lhs.GetSetOfAllSubVariables();
+    auto r = rhs.GetSetOfAllSubVariables();
+
+    // Check expressions contain a the same set of variables
+    if (l != r) return false;   
+
+    for (int i = 0; i < 1000; i++)
+    {
+        // Constant seed for determinism
+        std::default_random_engine eng(0);  
+
+        // Makes sense to have more numbers closer to zero for numerical stability
+        std::normal_distribution<> distr(0, 10);
+
+        std::unordered_map<char, double> variables;
+
+        for (const auto& var : l)
+            variables[var] = distr(eng);
+
+        auto approximatelyEqual = [](double a, double b, double epsilon)
+        {
+            return abs(a - b) <= (std::max(abs(a), abs(b)) * epsilon);
+        };
+
+        if (!approximatelyEqual(*lhs.Evaluate(variables), *rhs.Evaluate(variables), 0.001))
+            return false;
+    }
+
+    return true;
+}
+
 bool ExpressionBase::operator==(const ExpressionBase& other) const
 {
     return typeid(*this) == typeid(other) && isEqual(other);
@@ -156,6 +195,11 @@ bool ExpressionBase::operator==(const ExpressionBase& other) const
 bool Constant::isEqual(const ExpressionBase& other) const
 {
     return value == static_cast<decltype(*this)>(other).value;
+}
+
+void Variable::GetSetOfAllSubVariables(std::unordered_set<Token::variable_t>& variables) const
+{
+    variables.insert(pronumeral);
 }
 
 bool Variable::isEqual(const ExpressionBase& other) const
@@ -268,6 +312,12 @@ std::string Variable::Print() const
 
 Operator::Operator(const Operator& other) : Operator(*other.left, *other.right) {}
 
+void Operator::GetSetOfAllSubVariables(std::unordered_set<Token::variable_t>& variables) const
+{
+    left->GetSetOfAllSubVariables(variables);
+    right->GetSetOfAllSubVariables(variables);
+}
+
 std::string Operator::Print(std::string op, bool swap, bool leftAssosiative) const
 {
     auto PrintExpr = [=](const ExpressionBase& left, const ExpressionBase& right)
@@ -334,6 +384,18 @@ void ExpressionBase::GetConstantSubNodesFromPlus(std::vector<Constant*>& nodes)
 }
 
 void ExpressionBase::GetConstantSubNodesFromMultiply(std::vector<Constant*>& nodes)
+{
+    // Do Nothing
+}
+
+std::unordered_set<Token::variable_t> ExpressionBase::GetSetOfAllSubVariables() const
+{
+    std::unordered_set<Token::variable_t> variables;
+    GetSetOfAllSubVariables(variables);
+    return variables;
+}
+
+void ExpressionBase::GetSetOfAllSubVariables(std::unordered_set<Token::variable_t>&) const
 {
     // Do Nothing
 }

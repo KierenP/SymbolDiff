@@ -142,8 +142,24 @@ Token::operator_t Token::GetOperator() const
 
 void AddImplicitMultiplication(std::vector<Token>& tokens)
 {
+	// c = constant
+	// v = variable
+	// op = operator but not whichever braket follows
+	// (, ) = respective open or close bracket
+
+	//             right
+	//          c  v  op (
+	//         ____________
+	//   l  c | ?  x  .  x
+	//   e  v | x  x  .  x
+	//   f op | .  .  .  .
+	//   t  ) | x  x  .  x
+	//
+	// constant - constant should probably be an error detected elsewhere
+
 	for (size_t i = 0; i < tokens.size() - 1; i++)
-		if (tokens[i].IsConstant() && tokens[i + 1].IsVariable())
+		if ((!tokens[i].IsOperator() || tokens[i].GetOperator() == ')') &&
+			(!tokens[i+1].IsOperator() || tokens[i+1].GetOperator() == '('))
 			tokens.insert(tokens.begin() + i + 1, Token::CreateOperator('*'));
 }
 
