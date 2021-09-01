@@ -200,7 +200,7 @@ namespace Parser
 
 		TEST_METHOD(BasicExpression)
 		{		
-			auto actual = Differentiate("3x+5", 'x')->Print();
+			auto actual = Differentiate("3x+5", 'x');
 			decltype(actual) expected = "3";
 
 			Assert::AreEqual(expected, actual);
@@ -208,7 +208,7 @@ namespace Parser
 
 		TEST_METHOD(PowerRule)
 		{
-			auto actual = Differentiate("3x^5", 'x')->Print();
+			auto actual = Differentiate("3x^5", 'x');
 			decltype(actual) expected = "15x^4";
 
 			Assert::AreEqual(expected, actual);
@@ -216,7 +216,7 @@ namespace Parser
 
 		TEST_METHOD(ChainRule)
 		{
-			auto actual = Differentiate("3*(x^2+2)^5", 'x')->Print();
+			auto actual = Differentiate("3*(x^2+2)^5", 'x');
 			decltype(actual) expected = "30x(x^2+2)^4";
 
 			Assert::AreEqual(expected, actual);

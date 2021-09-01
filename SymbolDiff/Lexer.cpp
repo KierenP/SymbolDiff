@@ -1,6 +1,7 @@
 #include "Lexer.hpp"
 #include <variant>
 #include <assert.h>
+#include <stdexcept>
 
 std::vector<std::string> SplitInputToTokenStrings(std::string input)
 {
@@ -81,7 +82,7 @@ std::vector<Token> ConvertStringsToTokens(std::vector<std::string> input)
 		else if (is_variable(str))
 			tokens.push_back(Token::CreateVariable(str[0]));
 		else
-			throw "Could not match token in ConvertStringsToTokens";
+			throw std::invalid_argument("Unknown token: " + str);
 	}			
 
 	return tokens;
