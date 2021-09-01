@@ -121,6 +121,38 @@ namespace Parser
 
 			Assert::IsTrue(*actual == *expected);
 		}
+
+		TEST_METHOD(multivariable_expression)
+		{
+			auto actual = BuildExpression(Tokenize("3ax^a"));
+
+			decltype(actual) expected = std::make_unique<
+				OperatorMultiply>(
+					OperatorMultiply(
+						Constant(3),
+						Variable('a')),
+					OperatorExponent(
+						Variable('x'), 
+						Variable('a')));
+
+			Assert::IsTrue(*actual == *expected);
+		}
+
+		TEST_METHOD(multivariable_expression_with_brackets)
+		{
+			auto actual = BuildExpression(Tokenize("3(a(x^a))"));
+
+			decltype(actual) expected = std::make_unique<
+				OperatorMultiply>(
+					Constant(3),
+					OperatorMultiply(
+						Variable('a'),
+						OperatorExponent(
+							Variable('x'),
+							Variable('a'))));
+
+			Assert::IsTrue(*actual == *expected);
+		}
 	};
 
 	TEST_CLASS(expression_Print)
@@ -192,7 +224,84 @@ namespace Parser
 
 			Assert::IsTrue(!actual.has_value());
 		}
+
+		TEST_METHOD(multivariable_expression)
+		{
+			auto actual = BuildExpression(Tokenize("3ax^a"))->Evaluate({ {'x', 2}, {'a', 3}});
+			double expected = 72;
+
+			Assert::IsTrue(actual.has_value());
+			Assert::AreEqual(expected, *actual);
+		}
 	};
+
+	TEST_CLASS(expressionsNumericallyEqual)
+	{
+	public:
+
+		TEST_METHOD(perfectly_equal)
+		{
+			auto actual = BuildExpression(Tokenize("3x+5"));
+			decltype(actual) expected = BuildExpression(Tokenize("3x+5"));
+
+			Assert::IsTrue(ExpressionsNumericallyEqual(*expected, *actual));
+		}
+
+		TEST_METHOD(simple_equal)
+		{
+			auto actual = BuildExpression(Tokenize("3x+5"));
+			decltype(actual) expected = BuildExpression(Tokenize("3x+5+1*0"));
+
+			Assert::IsTrue(ExpressionsNumericallyEqual(*expected, *actual));
+		}
+
+		TEST_METHOD(simple_unequal)
+		{
+			auto actual = BuildExpression(Tokenize("3x+5"));
+			decltype(actual) expected = BuildExpression(Tokenize("3x+5+1*1"));
+
+			Assert::IsFalse(ExpressionsNumericallyEqual(*expected, *actual));
+		}
+
+		TEST_METHOD(multivariable_equal)
+		{
+			auto actual = BuildExpression(Tokenize("3ax^a"));
+			decltype(actual) expected = BuildExpression(Tokenize("3(a(x^a))"));
+
+			Assert::IsTrue(ExpressionsNumericallyEqual(*expected, *actual));
+		}
+
+		TEST_METHOD(multivariable_unequal)
+		{
+			auto actual = BuildExpression(Tokenize("3a/x^a"));
+			decltype(actual) expected = BuildExpression(Tokenize("3/x^a"));
+
+			Assert::IsFalse(ExpressionsNumericallyEqual(*expected, *actual));
+		}
+	};
+
+	TEST_CLASS(getSetOfAllSubVariables)
+	{
+	public:
+
+		TEST_METHOD(complexExpression)
+		{
+			auto actual = BuildExpression(Tokenize("a^b^(32/d/e-f)^(x*31-m*n)"))->GetSetOfAllSubVariables();
+			decltype(actual) expected = { 'a', 'b', 'd', 'e', 'f', 'x', 'm', 'n' };
+
+			Assert::IsTrue(expected == actual);
+		}
+
+		TEST_METHOD(noVariables)
+		{
+
+			auto actual = BuildExpression(Tokenize("0"))->GetSetOfAllSubVariables();
+			decltype(actual) expected = {};
+
+			Assert::IsTrue(expected == actual);
+		}
+	};
+
 
 	TEST_CLASS(expression_differentiate)
 	{
@@ -200,26 +309,26 @@ namespace Parser
 
 		TEST_METHOD(BasicExpression)
 		{		
-			auto actual = Differentiate("3x+5", 'x');
-			decltype(actual) expected = "3";
+			auto actual = BuildExpression(Tokenize("3x+5"))->Derivative('x')->Simplified();
+			decltype(actual) expected = BuildExpression(Tokenize("3"));
 
-			Assert::AreEqual(expected, actual);
+			Assert::IsTrue(ExpressionsNumericallyEqual(*expected, *actual));
 		}
 
 		TEST_METHOD(PowerRule)
 		{
-			auto actual = Differentiate("3x^5", 'x');
-			decltype(actual) expected = "15x^4";
+			auto actual = BuildExpression(Tokenize("3x^5"))->Derivative('x')->Simplified();
+			decltype(actual) expected = BuildExpression(Tokenize("15x^4"));
 
-			Assert::AreEqual(expected, actual);
+			Assert::IsTrue(ExpressionsNumericallyEqual(*expected, *actual));
 		}
 
 		TEST_METHOD(ChainRule)
 		{
-			auto actual = Differentiate("3*(x^2+2)^5", 'x');
-			decltype(actual) expected = "30x(x^2+2)^4";
+			auto actual = BuildExpression(Tokenize("3*(x^2+2)^5"))->Derivative('x')->Simplified();
+			decltype(actual) expected = BuildExpression(Tokenize("30x(x^2+2)^4"));
 
-			Assert::AreEqual(expected, actual);
+			Assert::IsTrue(ExpressionsNumericallyEqual(*expected, *actual));
 		}
 	};
 }
