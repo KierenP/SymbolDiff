@@ -35,8 +35,12 @@ jobs:
       uses: darenm/Setup-VSTest@v1
       
     - name: tmp test
-      run: ls
+      run: ls .. |
+        ls |
+        ls SymbolDiff |
+        ls SymbolDiff\x64 |
+        ls SymbolDiff\x64\${{env.BUILD_CONFIGURATION}}\
       
     - name: Run VSTest
-      working-directory: x64\${{env.BUILD_CONFIGURATION}}\
+      working-directory: SymbolDiff\x64\${{env.BUILD_CONFIGURATION}}\
       run: vstest.console.exe /Platform:x64 UnitTests.dll
