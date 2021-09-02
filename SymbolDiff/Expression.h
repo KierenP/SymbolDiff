@@ -1,5 +1,4 @@
 #pragma once
-#include "Lexer.hpp"
 #include <memory>
 #include <unordered_map>
 #include <unordered_set>
@@ -34,7 +33,7 @@ private:
 class Constant : public ExpressionBase
 {
 public:
-	Constant(double val) : value(val) {}
+	explicit Constant(double val) : value(val) {}
 
 	auto GetConstant() const { return value; };
 	void SetConstant(double val) { value = val; }
@@ -57,7 +56,7 @@ private:
 class Variable : public ExpressionBase
 {
 public:
-	Variable(char val) : pronumeral(val) {}
+	explicit Variable(char val) : pronumeral(val) {}
 
 	auto GetVariable() const { return pronumeral; };
 
@@ -66,7 +65,7 @@ public:
 	std::unique_ptr<ExpressionBase> Derivative(char wrt) const override;
 
 	std::unique_ptr<ExpressionBase> Clone() const override { return std::make_unique<std::decay_t<decltype(*this)>>(*this); }
-	
+
 	void GetSetOfAllSubVariables(std::unordered_set<char>& variables) const override;
 
 private:
@@ -89,7 +88,7 @@ protected:
 	bool isEqual(const ExpressionBase& other) const override;
 	std::unique_ptr<ExpressionBase> EvaluateIfPossible() const;
 
-	std::string Print(std::string op, bool swap, bool leftAssosiative) const;
+	std::string Print(const std::string& op, bool swap, bool leftAssosiative) const;
 
 	std::unique_ptr<ExpressionBase> left;
 	std::unique_ptr<ExpressionBase> right;
@@ -163,8 +162,3 @@ public:
 
 	std::unique_ptr<ExpressionBase> Clone() const override { return std::make_unique<std::decay_t<decltype(*this)>>(*this); }
 };
-
-std::unique_ptr<ExpressionBase> BuildExpression(std::vector<Token> input);
-std::string Differentiate(std::string str, char wrt);
-
-bool ExpressionsNumericallyEqual(ExpressionBase& lhs, ExpressionBase& rhs);
