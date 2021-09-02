@@ -513,8 +513,11 @@ std::unique_ptr<ExpressionBase> OperatorPlus::Simplified() const
     // A little weird, but we don't want to accidentally use *this and only want to use copy.
     // By wrapping in a lambda, *this is unavailable
 
-    return [](std::unique_ptr<std::decay_t<decltype(*this)>> copy) -> std::unique_ptr<ExpressionBase>
+    return [](OperatorPlus copy) -> std::unique_ptr<ExpressionBase>
     {
+        copy.left = copy.left->Simplified();
+        copy.right = copy.right->Simplified();
+
         auto GetSum = [](std::vector<Constant*> vals)
         {
             return std::accumulate(vals.begin(), vals.end(), 0.0, [](double a, const Constant* b)
@@ -532,38 +535,38 @@ std::unique_ptr<ExpressionBase> OperatorPlus::Simplified() const
         // We do this simplification first because it could allow for further simplifications later
 
         std::vector<Constant*> constantLeafs;
-        copy->GetConstantSubNodesFromPlus(constantLeafs);
+        copy.GetConstantSubNodesFromPlus(constantLeafs);
 
         double total = GetSum(constantLeafs);
 
         for (size_t i = 0; i < constantLeafs.size(); i++)
             constantLeafs[i]->SetConstant(i == 0 ? total : 0);
 
-        copy->left = copy->left->Simplified();
-        copy->right = copy->right->Simplified();
+        copy.left = copy.left->Simplified();
+        copy.right = copy.right->Simplified();
 
         // x+0 -> x
-        if (dynamic_cast<Constant*>(copy->left.get()) && dynamic_cast<Constant*>(copy->left.get())->GetConstant() == 0)
+        if (dynamic_cast<Constant*>(copy.left.get()) && dynamic_cast<Constant*>(copy.left.get())->GetConstant() == 0)
         {
-            return copy->right->Clone();
+            return copy.right->Clone();
         }
 
-        if (dynamic_cast<Constant*>(copy->right.get()) && dynamic_cast<Constant*>(copy->right.get())->GetConstant() == 0)
+        if (dynamic_cast<Constant*>(copy.right.get()) && dynamic_cast<Constant*>(copy.right.get())->GetConstant() == 0)
         {
-            return copy->left->Clone();
+            return copy.left->Clone();
         }
 
-        auto evaluated = copy->EvaluateIfPossible();
+        auto evaluated = copy.EvaluateIfPossible();
         if (evaluated) return evaluated;
 
-        return copy;
+        return copy.Clone();
 
-    }(std::make_unique<std::decay_t<decltype(*this)>>(*left->Simplified(), *right->Simplified()));
+    }(*this);
 }
 
 std::unique_ptr<ExpressionBase> OperatorMinus::Simplified() const
 {
-    auto copy = std::make_unique<std::decay_t<decltype(*this)>>(*left->Simplified(), *right->Simplified());
+    auto copy = std::make_unique<OperatorMinus>(*left->Simplified(), *right->Simplified());
 
     auto evaluated = copy->EvaluateIfPossible();
     if (evaluated) return evaluated;
@@ -573,7 +576,7 @@ std::unique_ptr<ExpressionBase> OperatorMinus::Simplified() const
 
 std::unique_ptr<ExpressionBase> OperatorDivide::Simplified() const
 {
-    auto copy = std::make_unique<std::decay_t<decltype(*this)>>(*left->Simplified(), *right->Simplified());
+    auto copy = std::make_unique<OperatorDivide>(*left->Simplified(), *right->Simplified());
 
     auto evaluated = copy->EvaluateIfPossible();
     if (evaluated) return evaluated;
@@ -583,8 +586,11 @@ std::unique_ptr<ExpressionBase> OperatorDivide::Simplified() const
 
 std::unique_ptr<ExpressionBase> OperatorMultiply::Simplified() const
 {
-    return [](std::unique_ptr<std::decay_t<decltype(*this)>> copy) -> std::unique_ptr<ExpressionBase>
+    return [](OperatorMultiply copy) -> std::unique_ptr<ExpressionBase>
     {
+        copy.left = copy.left->Simplified();
+        copy.right = copy.right->Simplified();
+
         auto GetProduct = [](std::vector<Constant*> vals)
         {
             return std::accumulate(vals.begin(), vals.end(), 1.0, [](double a, const Constant* b)
@@ -602,61 +608,64 @@ std::unique_ptr<ExpressionBase> OperatorMultiply::Simplified() const
         // We do this simplification first because it could allow for further simplifications later
 
         std::vector<Constant*> constantLeafs;
-        copy->GetConstantSubNodesFromMultiply(constantLeafs);
+        copy.GetConstantSubNodesFromMultiply(constantLeafs);
 
         double total = GetProduct(constantLeafs);
 
         for (size_t i = 0; i < constantLeafs.size(); i++)
             constantLeafs[i]->SetConstant(i == 0 ? total : 1);
 
-        copy->left = copy->left->Simplified();
-        copy->right = copy->right->Simplified();
+        copy.left = copy.left->Simplified();
+        copy.right = copy.right->Simplified();
 
         // x*0 -> 0
-        if ((dynamic_cast<Constant*>(copy->left.get()) && dynamic_cast<Constant*>(copy->left.get())->GetConstant() == 0) ||
-            (dynamic_cast<Constant*>(copy->right.get()) && dynamic_cast<Constant*>(copy->right.get())->GetConstant() == 0))
+        if ((dynamic_cast<Constant*>(copy.left.get()) && dynamic_cast<Constant*>(copy.left.get())->GetConstant() == 0) ||
+            (dynamic_cast<Constant*>(copy.right.get()) && dynamic_cast<Constant*>(copy.right.get())->GetConstant() == 0))
         {
             return std::make_unique<Constant>(0);
         }
 
         // x*1 -> x
-        if (dynamic_cast<Constant*>(copy->left.get()) && dynamic_cast<Constant*>(copy->left.get())->GetConstant() == 1)
+        if (dynamic_cast<Constant*>(copy.left.get()) && dynamic_cast<Constant*>(copy.left.get())->GetConstant() == 1)
         {
-            return copy->right->Clone();
+            return copy.right->Clone();
         }
 
-        if (dynamic_cast<Constant*>(copy->right.get()) && dynamic_cast<Constant*>(copy->right.get())->GetConstant() == 1)
+        if (dynamic_cast<Constant*>(copy.right.get()) && dynamic_cast<Constant*>(copy.right.get())->GetConstant() == 1)
         {
-            return copy->left->Clone();
+            return copy.left->Clone();
         }
 
-        auto evaluated = copy->EvaluateIfPossible();
+        auto evaluated = copy.EvaluateIfPossible();
         if (evaluated) return evaluated;
 
-        return copy;
+        return copy.Clone();
 
-    }(std::make_unique<std::decay_t<decltype(*this)>>(*left->Simplified(), *right->Simplified()));
+    }(*this);
 }
 
 std::unique_ptr<ExpressionBase> OperatorExponent::Simplified() const
 {
-    return [](std::unique_ptr<std::decay_t<decltype(*this)>> copy) -> std::unique_ptr<ExpressionBase>
+    return [](OperatorExponent copy) -> std::unique_ptr<ExpressionBase>
     {
+        copy.left = copy.left->Simplified();
+        copy.right = copy.right->Simplified();
+
         // x^1 -> x, 1^x -> 1
-        if (dynamic_cast<Constant*>(copy->left.get()) && dynamic_cast<Constant*>(copy->left.get())->GetConstant() == 1)
+        if (dynamic_cast<Constant*>(copy.left.get()) && dynamic_cast<Constant*>(copy.left.get())->GetConstant() == 1)
         {
             return std::make_unique<Constant>(1);
         }
 
-        if (dynamic_cast<Constant*>(copy->right.get()) && dynamic_cast<Constant*>(copy->right.get())->GetConstant() == 1)
+        if (dynamic_cast<Constant*>(copy.right.get()) && dynamic_cast<Constant*>(copy.right.get())->GetConstant() == 1)
         {
-            return copy->left->Clone();
+            return copy.left->Clone();
         }
 
-        auto evaluated = copy->EvaluateIfPossible();
+        auto evaluated = copy.EvaluateIfPossible();
         if (evaluated) return evaluated;
 
-        return copy;
+        return copy.Clone();
 
-    }(std::make_unique<std::decay_t<decltype(*this)>>(*left->Simplified(), *right->Simplified()));
+    }(*this);
 }

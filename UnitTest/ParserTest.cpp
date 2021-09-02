@@ -325,7 +325,7 @@ namespace Parser
 
 		TEST_METHOD(ChainRule)
 		{
-			auto actual = BuildExpression(Tokenize("3*(x^2+2)^5"))->Derivative('x')->Simplified();
+			auto actual = BuildExpression(Tokenize("3(x^2+2)^5"))->Derivative('x')->Simplified();
 			decltype(actual) expected = BuildExpression(Tokenize("30x(x^2+2)^4"));
 
 			Assert::IsTrue(ExpressionsNumericallyEqual(*expected, *actual));
