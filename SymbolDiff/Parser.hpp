@@ -14,7 +14,7 @@ public:
 	virtual std::string Print() const = 0;
 	virtual std::unique_ptr<ExpressionBase> Clone() const = 0;
 
-	virtual std::unique_ptr<ExpressionBase> Derivative(Token::variable_t wrt) const = 0;
+	virtual std::unique_ptr<ExpressionBase> Derivative(char wrt) const = 0;
 	virtual std::unique_ptr<ExpressionBase> Simplified() const;
 
 	bool operator==(const ExpressionBase& other) const;
@@ -22,8 +22,8 @@ public:
 	virtual void GetConstantSubNodesFromPlus(std::vector<Constant*>& nodes);
 	virtual void GetConstantSubNodesFromMultiply(std::vector<Constant*>& nodes);
 
-	virtual std::unordered_set<Token::variable_t> GetSetOfAllSubVariables() const;
-	virtual void GetSetOfAllSubVariables(std::unordered_set<Token::variable_t>& variables) const;
+	virtual std::unordered_set<char> GetSetOfAllSubVariables() const;
+	virtual void GetSetOfAllSubVariables(std::unordered_set<char>& variables) const;
 
 	int Priority() const;
 
@@ -41,7 +41,7 @@ public:
 
 	std::string Print() const override;
 	std::optional<double> Evaluate(const std::unordered_map<char, double>& values = {}) const override;
-	std::unique_ptr<ExpressionBase> Derivative(Token::variable_t wrt) const override;
+	std::unique_ptr<ExpressionBase> Derivative(char wrt) const override;
 
 	void GetConstantSubNodesFromPlus(std::vector<Constant*>& nodes) override;
 	void GetConstantSubNodesFromMultiply(std::vector<Constant*>& nodes) override;
@@ -63,11 +63,11 @@ public:
 
 	std::string Print() const override;
 	std::optional<double> Evaluate(const std::unordered_map<char, double>& values = {}) const override;
-	std::unique_ptr<ExpressionBase> Derivative(Token::variable_t wrt) const override;
+	std::unique_ptr<ExpressionBase> Derivative(char wrt) const override;
 
 	std::unique_ptr<ExpressionBase> Clone() const override { return std::make_unique<std::decay_t<decltype(*this)>>(*this); }
 	
-	void GetSetOfAllSubVariables(std::unordered_set<Token::variable_t>& variables) const override;
+	void GetSetOfAllSubVariables(std::unordered_set<char>& variables) const override;
 
 private:
 	bool isEqual(const ExpressionBase& other) const override;
@@ -83,7 +83,7 @@ public:
 	Operator(const Operator& other);
 	Operator(Operator&& other) = default;
 
-	void GetSetOfAllSubVariables(std::unordered_set<Token::variable_t>& variables) const override;
+	void GetSetOfAllSubVariables(std::unordered_set<char>& variables) const override;
 
 protected:
 	bool isEqual(const ExpressionBase& other) const override;
@@ -101,7 +101,7 @@ public:
 	using Operator::Operator;
 
 	std::optional<double> Evaluate(const std::unordered_map<char, double>& values = {}) const override;
-	std::unique_ptr<ExpressionBase> Derivative(Token::variable_t wrt) const override;
+	std::unique_ptr<ExpressionBase> Derivative(char wrt) const override;
 	std::unique_ptr<ExpressionBase> Simplified() const override;
 	std::string Print() const override;
 
@@ -116,7 +116,7 @@ public:
 	using Operator::Operator;
 
 	std::optional<double> Evaluate(const std::unordered_map<char, double>& values = {}) const override;
-	std::unique_ptr<ExpressionBase> Derivative(Token::variable_t wrt) const override;
+	std::unique_ptr<ExpressionBase> Derivative(char wrt) const override;
 	std::unique_ptr<ExpressionBase> Simplified() const override;
 	std::string Print() const override;
 
@@ -129,7 +129,7 @@ public:
 	using Operator::Operator;
 
 	std::optional<double> Evaluate(const std::unordered_map<char, double>& values = {}) const override;
-	std::unique_ptr<ExpressionBase> Derivative(Token::variable_t wrt) const override;
+	std::unique_ptr<ExpressionBase> Derivative(char wrt) const override;
 	std::unique_ptr<ExpressionBase> Simplified() const override;
 	std::string Print() const override;
 
@@ -144,7 +144,7 @@ public:
 	using Operator::Operator;
 
 	std::optional<double> Evaluate(const std::unordered_map<char, double>& values = {}) const override;
-	std::unique_ptr<ExpressionBase> Derivative(Token::variable_t wrt) const override;
+	std::unique_ptr<ExpressionBase> Derivative(char wrt) const override;
 	std::unique_ptr<ExpressionBase> Simplified() const override;
 	std::string Print() const override;
 
@@ -157,7 +157,7 @@ public:
 	using Operator::Operator;
 
 	std::optional<double> Evaluate(const std::unordered_map<char, double>& values = {}) const override;
-	std::unique_ptr<ExpressionBase> Derivative(Token::variable_t wrt) const override;
+	std::unique_ptr<ExpressionBase> Derivative(char wrt) const override;
 	std::unique_ptr<ExpressionBase> Simplified() const override;
 	std::string Print() const override;
 
@@ -165,6 +165,6 @@ public:
 };
 
 std::unique_ptr<ExpressionBase> BuildExpression(std::vector<Token> input);
-std::string Differentiate(std::string str, Token::variable_t wrt);
+std::string Differentiate(std::string str, char wrt);
 
 bool ExpressionsNumericallyEqual(ExpressionBase& lhs, ExpressionBase& rhs);

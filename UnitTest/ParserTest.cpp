@@ -187,7 +187,7 @@ namespace Parser
 		TEST_METHOD(complexExpression)
 		{
 			std::string input = "a^b^(32/d/e-f)^(x*31-m*n)";
-			std::unordered_map<Token::variable_t, Token::constant_t> values = {
+			std::unordered_map<char, double> values = {
 				{ 'a', 2 },
 				{ 'b', 3 },
 				{ 'd', 8 },

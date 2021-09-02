@@ -7,23 +7,19 @@ class Token
 {
 public:
 
-	using constant_t = double;
-	using variable_t = char;
-	using operator_t = char;
-
 	bool IsConstant() const;
 	bool IsVariable() const;
 	bool IsOperator() const;
 
-	static Token CreateConstant(constant_t value);
-	static Token CreateVariable(variable_t letter);
-	static Token CreateOperator(operator_t op);
+	static Token CreateConstant(double value);
+	static Token CreateVariable(char letter);
+	static Token CreateOperator(char op);
 
 	bool operator==(const Token& other) const;
 
-	constant_t GetConstant() const;
-	variable_t GetVariable() const;
-	operator_t GetOperator() const;
+	double GetConstant() const;
+	char GetVariable() const;
+	char GetOperator() const;
 
 private:
 
@@ -35,7 +31,7 @@ private:
 		Operator,
 	};
 
-	std::variant<constant_t, variable_t, operator_t> data;
+	std::variant<double, char, char> data;
 
 	Token(decltype(data) value) : data(value) {}
 };
