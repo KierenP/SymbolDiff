@@ -103,18 +103,18 @@ bool Token::IsOperator() const
 	return data.index() == static_cast<size_t>(Type::Operator);
 }
 
-Token Token::CreateConstant(Token::constant_t value)
+Token Token::CreateConstant(double value)
 {
 	return Token(decltype(data){ std::in_place_index<static_cast<size_t>(Type::Constant)>, value });
 }
 
-Token Token::CreateVariable(Token::variable_t letter)
+Token Token::CreateVariable(char letter)
 {
 	assert(isalpha(letter));
 	return Token(decltype(data){ std::in_place_index<static_cast<size_t>(Type::Variable)>, letter });
 }
 
-Token Token::CreateOperator(Token::operator_t op)
+Token Token::CreateOperator(char op)
 {
 	assert(!isalpha(op));
 	return Token(decltype(data){ std::in_place_index<static_cast<size_t>(Type::Operator)>, op });
@@ -125,17 +125,17 @@ bool Token::operator==(const Token& other) const
 	return data == other.data;
 }
 
-Token::constant_t Token::GetConstant() const
+double Token::GetConstant() const
 {
 	return std::get<static_cast<size_t>(Type::Constant)>(data);
 }
 
-Token::variable_t Token::GetVariable() const
+char Token::GetVariable() const
 {
 	return std::get<static_cast<size_t>(Type::Variable)>(data);
 }
 
-Token::operator_t Token::GetOperator() const
+char Token::GetOperator() const
 {
 	return std::get<static_cast<size_t>(Type::Operator)>(data);
 }

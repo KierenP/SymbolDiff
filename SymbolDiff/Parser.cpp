@@ -144,7 +144,7 @@ std::unique_ptr<ExpressionBase> BuildExpression(std::vector<Token> input)
     return std::unique_ptr<ExpressionBase>(nodes.top());
 }
 
-std::string Differentiate(std::string str, Token::variable_t wrt)
+std::string Differentiate(std::string str, char wrt)
 {
     return BuildExpression(Tokenize(str))->Derivative(wrt)->Simplified()->Print();
 }
@@ -197,7 +197,7 @@ bool Constant::isEqual(const ExpressionBase& other) const
     return value == static_cast<decltype(*this)>(other).value;
 }
 
-void Variable::GetSetOfAllSubVariables(std::unordered_set<Token::variable_t>& variables) const
+void Variable::GetSetOfAllSubVariables(std::unordered_set<char>& variables) const
 {
     variables.insert(pronumeral);
 }
@@ -217,12 +217,12 @@ bool Operator::isEqual(const ExpressionBase& other) const
 
 //---------------------------------
 
-std::optional<double> Constant::Evaluate(const std::unordered_map<Token::variable_t, Token::constant_t>& /*values*/) const
+std::optional<double> Constant::Evaluate(const std::unordered_map<char, double>& /*values*/) const
 {
     return value;
 }
 
-std::optional<double> Variable::Evaluate(const std::unordered_map<Token::variable_t, Token::constant_t>& values) const
+std::optional<double> Variable::Evaluate(const std::unordered_map<char, double>& values) const
 {
     auto pos = values.find(pronumeral);
 
@@ -312,7 +312,7 @@ std::string Variable::Print() const
 
 Operator::Operator(const Operator& other) : Operator(*other.left, *other.right) {}
 
-void Operator::GetSetOfAllSubVariables(std::unordered_set<Token::variable_t>& variables) const
+void Operator::GetSetOfAllSubVariables(std::unordered_set<char>& variables) const
 {
     left->GetSetOfAllSubVariables(variables);
     right->GetSetOfAllSubVariables(variables);
@@ -388,14 +388,14 @@ void ExpressionBase::GetConstantSubNodesFromMultiply(std::vector<Constant*>& nod
     // Do Nothing
 }
 
-std::unordered_set<Token::variable_t> ExpressionBase::GetSetOfAllSubVariables() const
+std::unordered_set<char> ExpressionBase::GetSetOfAllSubVariables() const
 {
-    std::unordered_set<Token::variable_t> variables;
+    std::unordered_set<char> variables;
     GetSetOfAllSubVariables(variables);
     return variables;
 }
 
-void ExpressionBase::GetSetOfAllSubVariables(std::unordered_set<Token::variable_t>&) const
+void ExpressionBase::GetSetOfAllSubVariables(std::unordered_set<char>&) const
 {
     // Do Nothing
 }
@@ -424,27 +424,27 @@ void OperatorMultiply::GetConstantSubNodesFromMultiply(std::vector<Constant*>& n
 
 //---------------------------------
 
-std::unique_ptr<ExpressionBase> Constant::Derivative(Token::variable_t wrt) const
+std::unique_ptr<ExpressionBase> Constant::Derivative(char wrt) const
 {
     return std::make_unique<Constant>(0);
 }
 
-std::unique_ptr<ExpressionBase> Variable::Derivative(Token::variable_t wrt) const
+std::unique_ptr<ExpressionBase> Variable::Derivative(char wrt) const
 {
     return std::make_unique<Constant>(wrt == pronumeral ? 1 : 0);
 }
 
-std::unique_ptr<ExpressionBase> OperatorPlus::Derivative(Token::variable_t wrt) const
+std::unique_ptr<ExpressionBase> OperatorPlus::Derivative(char wrt) const
 {
     return std::make_unique<OperatorPlus>(*left->Derivative(wrt), *right->Derivative(wrt));
 }
 
-std::unique_ptr<ExpressionBase> OperatorMinus::Derivative(Token::variable_t wrt) const
+std::unique_ptr<ExpressionBase> OperatorMinus::Derivative(char wrt) const
 {
     return std::make_unique<OperatorMinus>(*left->Derivative(wrt), *right->Derivative(wrt));
 }
 
-std::unique_ptr<ExpressionBase> OperatorMultiply::Derivative(Token::variable_t wrt) const
+std::unique_ptr<ExpressionBase> OperatorMultiply::Derivative(char wrt) const
 {
     return std::make_unique<
         OperatorPlus>(
@@ -456,7 +456,7 @@ std::unique_ptr<ExpressionBase> OperatorMultiply::Derivative(Token::variable_t w
                 *left->Derivative(wrt)));
 }
 
-std::unique_ptr<ExpressionBase> OperatorDivide::Derivative(Token::variable_t wrt) const
+std::unique_ptr<ExpressionBase> OperatorDivide::Derivative(char wrt) const
 {
     return std::make_unique<
         OperatorDivide>(
@@ -472,7 +472,7 @@ std::unique_ptr<ExpressionBase> OperatorDivide::Derivative(Token::variable_t wrt
                 Constant(2)));
 }
 
-std::unique_ptr<ExpressionBase> OperatorExponent::Derivative(Token::variable_t wrt) const
+std::unique_ptr<ExpressionBase> OperatorExponent::Derivative(char wrt) const
 {
     //if (right->FunctionOf(wrt))
     //    throw "cannot differentiate expression with function in exponent";
