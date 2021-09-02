@@ -1,6 +1,6 @@
 #include "CppUnitTest.h"
 
-#include "..\SymbolDiff\Parser.hpp"
+#include "..\SymbolDiff\Algorithms.h"
 
 using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 

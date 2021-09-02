@@ -1,6 +1,6 @@
 #include "CppUnitTest.h"
 
-#include "..\SymbolDiff\Lexer.hpp"
+#include "..\SymbolDiff\Lexer.h"
 
 using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 

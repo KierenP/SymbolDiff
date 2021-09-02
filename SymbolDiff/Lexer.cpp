@@ -1,4 +1,4 @@
-#include "Lexer.hpp"
+#include "Lexer.h"
 #include <variant>
 #include <assert.h>
 #include <stdexcept>
@@ -163,7 +163,7 @@ void AddImplicitMultiplication(std::vector<Token>& tokens)
 			tokens.insert(tokens.begin() + i + 1, Token::CreateOperator('*'));
 }
 
-std::vector<Token> Tokenize(std::string input)
+std::vector<Token> Tokenize(const std::string& input)
 {
 	auto tmp1 = SplitInputToTokenStrings(input);
 	auto tmp2 = ConvertStringsToTokens(tmp1);
