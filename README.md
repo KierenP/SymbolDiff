@@ -19,7 +19,7 @@ Simply run the program and enter the equasion you wish to differentiate. SymbolD
 
 There are 5 main stages, 
 
-1. Lexing
+### 1. Lexing
 
 First the input is split into a series of strings representing each token:
 
@@ -29,7 +29,7 @@ First the input is split into a series of strings representing each token:
 3x^2 + 0.5x + 1 -> [ "3", "x", "^", "2", "+", "0.5", "x", "+", "1" ]
 ```
 
-2. Parsing
+### 2. Parsing
 
 Next the tokens are parsed to build an expression tree
 
@@ -47,11 +47,11 @@ Next the tokens are parsed to build an expression tree
   x   2
 ```
 
-3. Differentiation
+### 3. Differentiation
 
 The rules of differentiation are applied (e.g product rule, chain rule, etc) in otder to generate an expression which is the derivative. The intermediate result is usually very complex and needs to be simplified significantly
 
-4. Simplification
+### 4. Simplification
 
 The resulting expression is simplified if possible
 
@@ -63,7 +63,7 @@ The resulting expression is simplified if possible
 6   x
 ```
 
-5. Printing the expression
+### 5. Printing the expression
 
 At this stage paranthesis are added if required, and the operands might be flipped or even removed (e.g `a*31 -> 31*a -> 31a`)
 
