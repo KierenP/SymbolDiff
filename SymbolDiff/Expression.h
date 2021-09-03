@@ -78,6 +78,7 @@ class Operator : public ExpressionBase
 {
 public:
 	Operator(const ExpressionBase& l, const ExpressionBase& r) : left(l.Clone()), right(r.Clone()) {}
+	Operator(ExpressionBase* l, ExpressionBase* r) : left(l), right(r) {}
 
 	Operator(const Operator& other);
 	Operator(Operator&& other) = default;
@@ -162,3 +163,4 @@ public:
 
 	std::unique_ptr<ExpressionBase> Clone() const override { return std::make_unique<std::decay_t<decltype(*this)>>(*this); }
 };
+

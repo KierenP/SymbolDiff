@@ -25,121 +25,176 @@ int ExpressionBase::Priority() const
     return priority.at(typeid(*this));
 }
 
+std::unique_ptr<ExpressionBase> BuildBinaryExpression(std::stack<std::string>& operators, std::stack<std::unique_ptr<ExpressionBase>>& expressions)
+{
+    if (operators.size() < 1) throw std::invalid_argument("Invalid expression: trying to build binary expression with empty operator stack");
+    if (expressions.size() < 2) throw std::invalid_argument("Invalid expression: binary expression '" + operators.top() + "' without two operands");
+
+    auto op = operators.top();
+    operators.pop();
+
+    auto rhs = std::move(expressions.top());
+    expressions.pop();
+
+    auto lhs = std::move(expressions.top());
+    expressions.pop();
+
+    if (op == "+")
+        return std::make_unique<OperatorPlus>(lhs.release(), rhs.release());
+    if (op == "-")
+        return std::make_unique<OperatorMinus>(lhs.release(), rhs.release());    
+    if (op == "/")
+        return std::make_unique<OperatorDivide>(lhs.release(), rhs.release());    
+    if (op == "*")
+        return std::make_unique<OperatorMultiply>(lhs.release(), rhs.release());    
+    if (op == "exponent")
+        return std::make_unique<OperatorExponent>(lhs.release(), rhs.release());
+
+    throw std::invalid_argument("Invalid expression: could not build binary expression with operator '" + op + "'");
+}
+
 std::unique_ptr<ExpressionBase> BuildExpression(std::vector<Token> input)
 {
-    // Adapted from https://www.geeksforgeeks.org/program-to-convert-infix-notation-to-expression-tree/
-    // For reasons, this algorithm only works with the entire expression is wrapped in parenthesis
+    // Reference: CS3901 - Introduction to Data Structures How to Parse Arithmetic Expressions
 
-    // Prioritising the operators
-    static const std::unordered_map<char, int> p = {
-        { ')', 0},
-        { '+', 1},
-        { '-', 1},
-        { '/', 2},
-        { '*', 2},
-        { '^', 3}
-    };
+    if (input.empty()) throw std::invalid_argument("Input cannot be empty");
 
     input.insert(input.begin(), Token::CreateOperator('('));
-    input.push_back(Token::CreateOperator(')'));
+    input.emplace_back(Token::CreateOperator(')'));
 
-    // Stack to hold expressions
-    std::stack<ExpressionBase*> nodes;
+    std::stack<std::string> operators;
+    std::stack<std::unique_ptr<ExpressionBase>> expressions;
 
-    // Stack to hold tokens
-    std::stack<Token> tokens;
+    bool nextIsUnary = true;
 
-    auto CombineExpressions = [&]()
+    static const std::unordered_map<std::string, int> prio =
     {
-        // Get and remove the top element
-        // from the node stack
-
-        ExpressionBase* right = nodes.top();
-        nodes.pop();
-
-        // Get and remove the currently top
-        // element from the node stack
-
-        ExpressionBase* left = nodes.top();
-        nodes.pop();
-
-        // Get and remove the top element
-        // from the character stack
-        ExpressionBase* t;
-            
-        switch (tokens.top().GetOperator())
-        {
-        case '+':
-            t = new OperatorPlus{ *left, *right };
-            break;
-        case '-':
-            t = new OperatorMinus{ *left, *right };
-            break;
-        case '/':
-            t = new OperatorDivide{ *left, *right };
-            break;
-        case '*':
-            t = new OperatorMultiply{ *left, *right };
-            break;
-        case '^':
-            t = new OperatorExponent{ *left, *right };
-            break;
-        default:
-            throw std::invalid_argument("Unknown operator: " + std::to_string(tokens.top().GetOperator()));
-        }
-            
-        tokens.pop();
-
-        return t;
+        { "^", 5 },
+        { "exponent", 4 },
+        { "unary", 3 },
+        { "*", 2 },
+        { "/", 2 },
+        { "+", 1 },
+        { "-", 1 },
+        { "(", 0 },
     };
 
-    for (const auto& token : input)
+    for (auto token = input.begin(); token != input.end(); ++token)
     {
-        if (token.IsConstant())
+        // Open parenthesis
+        if (token->IsOperator() && token->GetOperator() == '(')
         {
-            nodes.emplace(new Constant(token.GetConstant()));
+            if (!nextIsUnary)
+                throw std::invalid_argument("Invalid expression: '(' directly after term");
+
+            operators.emplace("(");
+
+            nextIsUnary = true;
         }
 
-        else if (token.IsVariable())
+        // Close parenthesis
+        else if (token->IsOperator() && token->GetOperator() == ')')
         {
-            nodes.emplace(new Variable(token.GetVariable()));
-        }
+            if (nextIsUnary)
+                throw std::invalid_argument("Invalid expression: '()' is invalid");
 
-        else if (token.GetOperator() == '(') {
-
-            // Push '(' in token stack
-            tokens.push(token);
-        }
-
-        else if (token.GetOperator() == ')')
-        {
-            while (!tokens.empty() && tokens.top().GetOperator() != '(')
+            while (operators.top() != "(")
             {
-                // From right to left keep grouping the expressions and building the tree
-                nodes.push(CombineExpressions());
+                if (operators.top() == "unary")
+                {
+                    // assemble_unary_expression
+                }
+                else
+                {
+                    expressions.emplace(BuildBinaryExpression(operators, expressions));
+                }
             }
 
-            tokens.pop();
-        }
+            operators.pop();
 
-        // Make sure its a recognised operator
-        else if (p.count(token.GetOperator()))
-        {
-            // If an operator with lower or same associativity appears
-            while (!tokens.empty() && tokens.top().GetOperator() != '('
-                && ((token.GetOperator() != '^' && p.at(tokens.top().GetOperator()) >= p.at(token.GetOperator())
-                    || (token.GetOperator() == '^' && p.at(tokens.top().GetOperator()) > p.at(token.GetOperator())))))
+            if (operators.empty() && std::next(token) != input.end())
             {
-                nodes.push(CombineExpressions());
+                throw std::invalid_argument("Invalid expression: unbalanced parenthesis");
             }
 
-            // Push token to stack
-            tokens.push(token);
+            nextIsUnary = false;
         }
+
+        // Other Operator
+        else if (token->IsOperator())
+        {
+            if (nextIsUnary)
+            {
+                if (token->GetOperator() == '-')
+                {
+                    //push "- ?" onto expressions
+                    operators.emplace(std::string{ token->GetOperator() });
+                    operators.emplace("unary");
+                }
+                else
+                {
+                    throw std::invalid_argument("Invalid expression: only '-' can be unary, not '" + std::string{ token->GetVariable() } + "')");
+                }
+            }
+            else
+            {
+                while (prio.at(operators.top()) >= prio.at({ token->GetOperator() }))
+                {
+                    if (operators.top() == "unary")
+                    {
+                        // assemble_unary_expression
+                    }
+                    else
+                    {
+                        expressions.emplace(BuildBinaryExpression(operators, expressions));
+                    }
+                }
+
+                if (token->GetOperator() == '^')
+                {
+                    operators.emplace("exponent");
+                }
+                else
+                {
+                    operators.emplace(std::string{ token->GetOperator() });
+                }
+            }
+
+            nextIsUnary = true;
+        }
+
+        // Number
+        else if (token->IsConstant())
+        {
+            if (!nextIsUnary)
+                throw std::invalid_argument("Invalid expression: constant ('" + std::to_string(token->GetConstant()) + "') directly after term");
+
+            expressions.push(std::make_unique<Constant>(token->GetConstant()));
+
+            nextIsUnary = false;
+        }
+
+        // Variable
+        else if (token->IsVariable())
+        {
+            if (!nextIsUnary)
+                throw std::invalid_argument("Invalid expression: variable ('" + std::string{ token->GetVariable() } + "') directly after term");
+
+            expressions.push(std::make_unique<Variable>(token->GetVariable()));
+
+            nextIsUnary = false;
+        }
+
         else
-            throw std::invalid_argument("Detected operator with unknown priority: " + std::to_string(tokens.top().GetOperator()));
+        {
+            // This should never happen
+            assert(!"You have made a new type of token without editing the parsing code");
+        }
     }
 
-    return std::unique_ptr<ExpressionBase>(nodes.top());
+    if (!operators.empty() || expressions.size() != 1) 
+        throw std::invalid_argument("Invalid expression: unbalanced parenthesis");
+
+    return std::move(expressions.top());
 }
 
