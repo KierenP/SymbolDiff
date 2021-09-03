@@ -18,7 +18,7 @@ bool Variable::isEqual(const ExpressionBase& other) const
     return pronumeral == static_cast<decltype(*this)>(other).pronumeral;
 }
 
-bool Operator::isEqual(const ExpressionBase& other) const
+bool BinaryOperator::isEqual(const ExpressionBase& other) const
 {
     const auto& converted_other = static_cast<decltype(*this)>(other);
 
@@ -26,11 +26,12 @@ bool Operator::isEqual(const ExpressionBase& other) const
         (right == converted_other.right || (right && converted_other.right && *right == *converted_other.right));
 }
 
-//---------------------------------
+bool UnaryOperator::isEqual(const ExpressionBase& other) const
+{
+    const auto& converted_other = static_cast<decltype(*this)>(other);
 
-Operator::Operator(const Operator& other) : Operator(*other.left, *other.right) {}
-
-//---------------------------------
+    return (right == converted_other.right || (right && converted_other.right && *right == *converted_other.right));
+}
 
 std::unordered_set<char> ExpressionBase::GetSetOfAllSubVariables() const
 {
@@ -39,7 +40,12 @@ std::unordered_set<char> ExpressionBase::GetSetOfAllSubVariables() const
     return variables;
 }
 
-void Operator::GetSetOfAllSubVariables(std::unordered_set<char>& variables) const
+void UnaryOperator::GetSetOfAllSubVariables(std::unordered_set<char>& variables) const
+{
+    right->GetSetOfAllSubVariables(variables);
+}
+
+void BinaryOperator::GetSetOfAllSubVariables(std::unordered_set<char>& variables) const
 {
     left->GetSetOfAllSubVariables(variables);
     right->GetSetOfAllSubVariables(variables);
@@ -259,9 +265,19 @@ std::unique_ptr<ExpressionBase> OperatorExponent::Simplified() const
     }(*this);
 }
 
+std::unique_ptr<ExpressionBase> OperatorUnaryMinus::Simplified() const
+{
+    auto copy = std::make_unique<OperatorUnaryMinus>(right->Simplified().release());
+
+    auto evaluated = copy->EvaluateIfPossible();
+    if (evaluated) return evaluated;
+
+    return copy;
+}
+
 //---------------------------------
 
-std::unique_ptr<ExpressionBase> Operator::EvaluateIfPossible() const
+std::unique_ptr<ExpressionBase> BinaryOperator::EvaluateIfPossible() const
 {
     // Evaluate to a constant if possible
 
@@ -271,3 +287,15 @@ std::unique_ptr<ExpressionBase> Operator::EvaluateIfPossible() const
     else
         return { nullptr };
 }
+
+std::unique_ptr<ExpressionBase> UnaryOperator::EvaluateIfPossible() const
+{
+    // Evaluate to a constant if possible
+
+    auto eval = Evaluate();
+    if (eval)
+        return std::make_unique<Constant>(*eval);
+    else
+        return { nullptr };
+}
+
