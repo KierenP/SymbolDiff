@@ -33,7 +33,7 @@ private:
 
 	std::variant<double, char, char> data;
 
-	explicit Token(decltype(data) value) : data(value) {}
+	explicit Token(decltype(data)&& value) : data(std::move(value)) {}
 };
 
 std::vector<Token> Tokenize(const std::string& input);

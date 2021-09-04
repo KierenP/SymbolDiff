@@ -169,62 +169,62 @@ std::string Variable::Print() const
     return std::string(1, pronumeral);
 }
 
-std::string BinaryOperator::Print(const std::string& op, bool swap, bool leftAssosiative) const
+std::string BinaryOperator::PrintBinary(const std::string& op, bool swap, bool leftAssosiative) const
 {
-    auto PrintExpr = [=](const ExpressionBase& left, const ExpressionBase& right)
+    auto PrintExpr = [op, leftAssosiative](const ExpressionBase& l, const ExpressionBase& r, int priority)
     {
         std::string str = "";
 
-        if (leftAssosiative && left.Priority() < Priority() ||
-            !leftAssosiative && left.Priority() <= Priority())
-            str += "(" + left.Print() + ")";
+        if (leftAssosiative && l.Priority() < priority ||
+            !leftAssosiative && l.Priority() <= priority)
+            str += "(" + l.Print() + ")";
         else
-            str += left.Print();
+            str += l.Print();
 
         str += op;
 
-        if (leftAssosiative && right.Priority() <= Priority() ||
-            !leftAssosiative && right.Priority() < Priority())
-            str += "(" + right.Print() + ")";
+        if (leftAssosiative && r.Priority() <= priority ||
+            !leftAssosiative && r.Priority() < priority)
+            str += "(" + r.Print() + ")";
         else
-            str += right.Print();
+            str += r.Print();
 
         return str;
     };
 
     if (swap)
-        return PrintExpr(*right, *left);
+        return PrintExpr(*right, *left, Priority());
     else
-        return PrintExpr(*left, *right);
+        return PrintExpr(*left, *right, Priority());
 }
 
 std::string OperatorPlus::Print() const
 {
-    return BinaryOperator::Print("+", false, true);
+    return BinaryOperator::PrintBinary("+", false, true);
 }
 
 std::string OperatorMinus::Print() const
 {
-    return BinaryOperator::Print("-", false, true);
+    return BinaryOperator::PrintBinary("-", false, true);
 }
 
 std::string OperatorDivide::Print() const
 {
-    return BinaryOperator::Print("/", false, true);
+    return BinaryOperator::PrintBinary("/", false, true);
 }
 
 std::string OperatorMultiply::Print() const
 {
     // If we are going to print x*31 instead print out 31x
     if (dynamic_cast<Variable*>(left.get()) && dynamic_cast<Constant*>(right.get()))
-        return BinaryOperator::Print("", true, true);
+        return BinaryOperator::PrintBinary("", true, true);
     else
-        return BinaryOperator::Print("", false, true);
+        return BinaryOperator::PrintBinary("", false, true);
 }
 
 std::string OperatorExponent::Print() const
 {
-    return BinaryOperator::Print("^", false, false);
+    return BinaryOperator::PrintBinary("^", false, false);
 }
 
 std::string OperatorUnaryMinus::Print() const
@@ -288,9 +288,6 @@ std::unique_ptr<ExpressionBase> OperatorDivide::Derivative(char wrt) const
 
 std::unique_ptr<ExpressionBase> OperatorExponent::Derivative(char wrt) const
 {
-    //if (right->FunctionOf(wrt))
-    //    throw "cannot differentiate expression with function in exponent";
-
     return std::make_unique<
         OperatorMultiply>(
             right->Clone().release(),

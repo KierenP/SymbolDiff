@@ -11,9 +11,12 @@
 void ParseOpenParenthesis(bool& nextIsUnary, std::stack<std::string>& operators);
 void ParseVariable(bool& nextIsUnary, const std::vector<Token>::iterator& token, std::stack<std::unique_ptr<ExpressionBase>>& expressions);
 void ParseConstant(bool& nextIsUnary, const std::vector<Token>::iterator& token, std::stack<std::unique_ptr<ExpressionBase>>& expressions);
+void ParseOperator(bool& nextIsUnary, const std::vector<Token>::iterator& token, std::stack<std::string>& operators, std::stack<std::unique_ptr<ExpressionBase>>& expressions);
+void ParseCloseParenthesis(bool& nextIsUnary, std::stack<std::string>& operators, std::stack<std::unique_ptr<ExpressionBase>>& expressions, bool lastToken);
 
 std::unique_ptr<ExpressionBase> BuildBinaryExpression(std::stack<std::string>& operators, std::stack<std::unique_ptr<ExpressionBase>>& expressions);
 std::unique_ptr<ExpressionBase> BuildUnaryExpression(std::stack<std::string>& operators, std::stack<std::unique_ptr<ExpressionBase>>& expressions);
+
 
 std::unique_ptr<ExpressionBase> BuildExpression(std::vector<Token> input)
 {
@@ -29,18 +32,6 @@ std::unique_ptr<ExpressionBase> BuildExpression(std::vector<Token> input)
 
     bool nextIsUnary = true;
 
-    static const std::unordered_map<std::string, int> prio =
-    {
-        { "^", 5 },         // 'current' exponent
-        { "exponent", 4 },  // 'old' exponent which is further left
-        { "unary", 3 },
-        { "*", 2 },
-        { "/", 2 },
-        { "+", 1 },
-        { "-", 1 },
-        { "(", 0 },
-    };
-
     for (auto token = input.begin(); token != input.end(); ++token)
     {
         // Open parenthesis
@@ -52,71 +43,13 @@ std::unique_ptr<ExpressionBase> BuildExpression(std::vector<Token> input)
         // Close parenthesis
         else if (token->IsOperator() && token->GetOperator() == ')')
         {
-            if (nextIsUnary)
-                throw std::invalid_argument("Invalid expression: '()' is invalid");
-
-            while (operators.top() != "(")
-            {
-                if (operators.top() == "unary")
-                {
-                    expressions.emplace(BuildUnaryExpression(operators, expressions));
-                }
-                else
-                {
-                    expressions.emplace(BuildBinaryExpression(operators, expressions));
-                }
-            }
-
-            operators.pop();
-
-            if (operators.empty() && std::next(token) != input.end())
-            {
-                throw std::invalid_argument("Invalid expression: unbalanced parenthesis");
-            }
-
-            nextIsUnary = false;
+            ParseCloseParenthesis(nextIsUnary, operators, expressions, std::next(token) != input.end());
         }
 
         // Other Operator
         else if (token->IsOperator())
         {
-            if (nextIsUnary)
-            {
-                if (token->GetOperator() == '-')
-                {
-                    operators.emplace(std::string{ token->GetOperator() });
-                    operators.emplace("unary");
-                }
-                else
-                {
-                    throw std::invalid_argument("Invalid expression: only '-' can be unary, not '" + std::string{ token->GetOperator() } + "')");
-                }
-            }
-            else
-            {
-                while (prio.at(operators.top()) >= prio.at({ token->GetOperator() }))
-                {
-                    if (operators.top() == "unary")
-                    {
-                        expressions.emplace(BuildUnaryExpression(operators, expressions));
-                    }
-                    else
-                    {
-                        expressions.emplace(BuildBinaryExpression(operators, expressions));
-                    }
-                }
-
-                if (token->GetOperator() == '^')
-                {
-                    operators.emplace("exponent");
-                }
-                else
-                {
-                    operators.emplace(std::string{ token->GetOperator() });
-                }
-            }
-
-            nextIsUnary = true;
+            ParseOperator(nextIsUnary, token, operators, expressions);
         }
 
         // Number
@@ -142,6 +75,86 @@ std::unique_ptr<ExpressionBase> BuildExpression(std::vector<Token> input)
         throw std::invalid_argument("Invalid expression: unbalanced parenthesis");
 
     return std::move(expressions.top());
+}
+
+void ParseCloseParenthesis(bool& nextIsUnary, std::stack<std::string>& operators, std::stack<std::unique_ptr<ExpressionBase>>& expressions, bool lastToken)
+{
+    if (nextIsUnary)
+        throw std::invalid_argument("Invalid expression: '()' is invalid");
+
+    while (operators.top() != "(")
+    {
+        if (operators.top() == "unary")
+        {
+            expressions.emplace(BuildUnaryExpression(operators, expressions));
+        }
+        else
+        {
+            expressions.emplace(BuildBinaryExpression(operators, expressions));
+        }
+    }
+
+    operators.pop();
+
+    if (operators.empty() && lastToken)
+    {
+        throw std::invalid_argument("Invalid expression: unbalanced parenthesis");
+    }
+
+    nextIsUnary = false;
+}
+
+void ParseOperator(bool& nextIsUnary, const std::vector<Token>::iterator& token, std::stack<std::string>& operators, std::stack<std::unique_ptr<ExpressionBase>>& expressions)
+{
+    static const std::unordered_map<std::string, int> prio =
+    {
+        { "^", 5 },         // 'current' exponent
+        { "exponent", 4 },  // 'old' exponent which is further left
+        { "unary", 3 },
+        { "*", 2 },
+        { "/", 2 },
+        { "+", 1 },
+        { "-", 1 },
+        { "(", 0 },
+    };
+
+    if (nextIsUnary)
+    {
+        if (token->GetOperator() == '-')
+        {
+            operators.emplace(std::string{ token->GetOperator() });
+            operators.emplace("unary");
+        }
+        else
+        {
+            throw std::invalid_argument("Invalid expression: only '-' can be unary, not '" + std::string{ token->GetOperator() } + "')");
+        }
+    }
+    else
+    {
+        while (prio.at(operators.top()) >= prio.at({ token->GetOperator() }))
+        {
+            if (operators.top() == "unary")
+            {
+                expressions.emplace(BuildUnaryExpression(operators, expressions));
+            }
+            else
+            {
+                expressions.emplace(BuildBinaryExpression(operators, expressions));
+            }
+        }
+
+        if (token->GetOperator() == '^')
+        {
+            operators.emplace("exponent");
+        }
+        else
+        {
+            operators.emplace(std::string{ token->GetOperator() });
+        }
+    }
+
+    nextIsUnary = true;
 }
 
 void ParseVariable(bool& nextIsUnary, const std::vector<Token>::iterator& token, std::stack<std::unique_ptr<ExpressionBase>>& expressions)

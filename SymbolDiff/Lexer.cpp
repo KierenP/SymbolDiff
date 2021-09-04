@@ -44,7 +44,7 @@ std::vector<std::string> SplitInputToTokenStrings(std::string input)
 
 // We assume that all numbers are non zero, as '-33' would be lexed as a unary minus '-' and a constant '33'.
 
-std::vector<Token> ConvertStringsToTokens(std::vector<std::string> input)
+std::vector<Token> ConvertStringsToTokens(const std::vector<std::string>& input)
 {
 	std::vector<Token> tokens;
 

@@ -36,27 +36,27 @@ bool UnaryOperator::isEqual(const ExpressionBase& other) const
 std::unordered_set<char> ExpressionBase::GetSetOfAllSubVariables() const
 {
     std::unordered_set<char> variables;
-    GetSetOfAllSubVariables(variables);
+    FillSetOfAllSubVariables(variables);
     return variables;
 }
 
-void UnaryOperator::GetSetOfAllSubVariables(std::unordered_set<char>& variables) const
+void UnaryOperator::FillSetOfAllSubVariables(std::unordered_set<char>& variables) const
 {
-    right->GetSetOfAllSubVariables(variables);
+    right->FillSetOfAllSubVariables(variables);
 }
 
-void BinaryOperator::GetSetOfAllSubVariables(std::unordered_set<char>& variables) const
+void BinaryOperator::FillSetOfAllSubVariables(std::unordered_set<char>& variables) const
 {
-    left->GetSetOfAllSubVariables(variables);
-    right->GetSetOfAllSubVariables(variables);
+    left->FillSetOfAllSubVariables(variables);
+    right->FillSetOfAllSubVariables(variables);
 }
 
-void Variable::GetSetOfAllSubVariables(std::unordered_set<char>& variables) const
+void Variable::FillSetOfAllSubVariables(std::unordered_set<char>& variables) const
 {
     variables.insert(pronumeral);
 }
 
-void ExpressionBase::GetSetOfAllSubVariables(std::unordered_set<char>&) const
+void ExpressionBase::FillSetOfAllSubVariables(std::unordered_set<char>&) const
 {
     // Do Nothing
 }
@@ -105,58 +105,56 @@ std::unique_ptr<ExpressionBase> ExpressionBase::Simplified() const
 
 std::unique_ptr<ExpressionBase> OperatorPlus::Simplified() const
 {
-    // A little weird, but we don't want to accidentally use *this and only want to use copy.
-    // By wrapping in a lambda, *this is unavailable
+    return Simplify(OperatorPlus(*left, *right));
+}
 
-    return [](OperatorPlus copy) -> std::unique_ptr<ExpressionBase>
+std::unique_ptr<ExpressionBase> OperatorPlus::Simplify(OperatorPlus expr)
+{
+    expr.left = expr.left->Simplified();
+    expr.right = expr.right->Simplified();
+
+    auto GetSum = [](std::vector<Constant*> vals)
     {
-        copy.left = copy.left->Simplified();
-        copy.right = copy.right->Simplified();
+        return std::accumulate(vals.begin(), vals.end(), 0.0, [](double a, const Constant* b)
+            {
+                return a + b->GetConstant();
+            });
+    };
 
-        auto GetSum = [](std::vector<Constant*> vals)
-        {
-            return std::accumulate(vals.begin(), vals.end(), 0.0, [](double a, const Constant* b)
-                {
-                    return a + b->GetConstant();
-                });
-        };
+    // Multiplication/addition can be done in any order e.g 3*(5*x) can be simplified
+    // This is complex, because we could have any number of multiplications
+    // or additions in order with constants or variables or whole expressions with brackets.
+    // The algorithm recursively finds all constant value leaf nodes from successive 
+    // multiplication or additions and then combines them into one constant, leaving the others 
+    // to be 1 for multiplication or 0 for addition. e.g: 3*x*4 -> 12*x*1 or 3+x+4 -> 7+x+0. 
+    // We do this simplification first because it could allow for further simplifications later
 
-        // Multiplication/addition can be done in any order e.g 3*(5*x) can be simplified
-        // This is complex, because we could have any number of multiplications
-        // or additions in order with constants or variables or whole expressions with brackets.
-        // The algorithm recursively finds all constant value leaf nodes from successive 
-        // multiplication or additions and then combines them into one constant, leaving the others 
-        // to be 1 for multiplication or 0 for addition. e.g: 3*x*4 -> 12*x*1 or 3+x+4 -> 7+x+0. 
-        // We do this simplification first because it could allow for further simplifications later
+    std::vector<Constant*> constantLeafs;
+    expr.GetConstantSubNodesFromPlus(constantLeafs);
 
-        std::vector<Constant*> constantLeafs;
-        copy.GetConstantSubNodesFromPlus(constantLeafs);
+    double total = GetSum(constantLeafs);
 
-        double total = GetSum(constantLeafs);
+    for (size_t i = 0; i < constantLeafs.size(); i++)
+        constantLeafs[i]->SetConstant(i == 0 ? total : 0);
 
-        for (size_t i = 0; i < constantLeafs.size(); i++)
-            constantLeafs[i]->SetConstant(i == 0 ? total : 0);
+    expr.left = expr.left->Simplified();
+    expr.right = expr.right->Simplified();
 
-        copy.left = copy.left->Simplified();
-        copy.right = copy.right->Simplified();
+    // x+0 -> x
+    if (dynamic_cast<Constant*>(expr.left.get()) && dynamic_cast<Constant*>(expr.left.get())->GetConstant() == 0)
+    {
+        return expr.right->Clone();
+    }
 
-        // x+0 -> x
-        if (dynamic_cast<Constant*>(copy.left.get()) && dynamic_cast<Constant*>(copy.left.get())->GetConstant() == 0)
-        {
-            return copy.right->Clone();
-        }
+    if (dynamic_cast<Constant*>(expr.right.get()) && dynamic_cast<Constant*>(expr.right.get())->GetConstant() == 0)
+    {
+        return expr.left->Clone();
+    }
 
-        if (dynamic_cast<Constant*>(copy.right.get()) && dynamic_cast<Constant*>(copy.right.get())->GetConstant() == 0)
-        {
-            return copy.left->Clone();
-        }
+    auto evaluated = expr.EvaluateIfPossible();
+    if (evaluated) return evaluated;
 
-        auto evaluated = copy.EvaluateIfPossible();
-        if (evaluated) return evaluated;
-
-        return copy.Clone();
-
-    }(*this);
+    return expr.Clone();
 }
 
 std::unique_ptr<ExpressionBase> OperatorMinus::Simplified() const
@@ -181,62 +179,63 @@ std::unique_ptr<ExpressionBase> OperatorDivide::Simplified() const
 
 std::unique_ptr<ExpressionBase> OperatorMultiply::Simplified() const
 {
-    return [](OperatorMultiply copy) -> std::unique_ptr<ExpressionBase>
+    return Simplify(OperatorMultiply(*left, *right));
+}
+
+std::unique_ptr<ExpressionBase> OperatorMultiply::Simplify(OperatorMultiply expr)
+{
+    expr.left = expr.left->Simplified();
+    expr.right = expr.right->Simplified();
+
+    auto GetProduct = [](std::vector<Constant*> vals)
     {
-        copy.left = copy.left->Simplified();
-        copy.right = copy.right->Simplified();
+        return std::accumulate(vals.begin(), vals.end(), 1.0, [](double a, const Constant* b)
+            {
+                return a * b->GetConstant();
+            });
+    };
 
-        auto GetProduct = [](std::vector<Constant*> vals)
-        {
-            return std::accumulate(vals.begin(), vals.end(), 1.0, [](double a, const Constant* b)
-                {
-                    return a * b->GetConstant();
-                });
-        };
+    // Multiplication/addition can be done in any order e.g 3*(5*x) can be simplified
+    // This is complex, because we could have any number of multiplications
+    // or additions in order with constants or variables or whole expressions with brackets.
+    // The algorithm recursively finds all constant value leaf nodes from successive 
+    // multiplication or additions and then combines them into one constant, leaving the others 
+    // to be 1 for multiplication or 0 for addition. e.g: 3*x*4 -> 12*x*1 or 3+x+4 -> 7+x+0. 
+    // We do this simplification first because it could allow for further simplifications later
 
-        // Multiplication/addition can be done in any order e.g 3*(5*x) can be simplified
-        // This is complex, because we could have any number of multiplications
-        // or additions in order with constants or variables or whole expressions with brackets.
-        // The algorithm recursively finds all constant value leaf nodes from successive 
-        // multiplication or additions and then combines them into one constant, leaving the others 
-        // to be 1 for multiplication or 0 for addition. e.g: 3*x*4 -> 12*x*1 or 3+x+4 -> 7+x+0. 
-        // We do this simplification first because it could allow for further simplifications later
+    std::vector<Constant*> constantLeafs;
+    expr.GetConstantSubNodesFromMultiply(constantLeafs);
 
-        std::vector<Constant*> constantLeafs;
-        copy.GetConstantSubNodesFromMultiply(constantLeafs);
+    double total = GetProduct(constantLeafs);
 
-        double total = GetProduct(constantLeafs);
+    for (size_t i = 0; i < constantLeafs.size(); i++)
+        constantLeafs[i]->SetConstant(i == 0 ? total : 1);
 
-        for (size_t i = 0; i < constantLeafs.size(); i++)
-            constantLeafs[i]->SetConstant(i == 0 ? total : 1);
+    expr.left = expr.left->Simplified();
+    expr.right = expr.right->Simplified();
 
-        copy.left = copy.left->Simplified();
-        copy.right = copy.right->Simplified();
+    // x*0 -> 0
+    if ((dynamic_cast<Constant*>(expr.left.get()) && dynamic_cast<Constant*>(expr.left.get())->GetConstant() == 0) ||
+        (dynamic_cast<Constant*>(expr.right.get()) && dynamic_cast<Constant*>(expr.right.get())->GetConstant() == 0))
+    {
+        return std::make_unique<Constant>(0);
+    }
 
-        // x*0 -> 0
-        if ((dynamic_cast<Constant*>(copy.left.get()) && dynamic_cast<Constant*>(copy.left.get())->GetConstant() == 0) ||
-            (dynamic_cast<Constant*>(copy.right.get()) && dynamic_cast<Constant*>(copy.right.get())->GetConstant() == 0))
-        {
-            return std::make_unique<Constant>(0);
-        }
+    // x*1 -> x
+    if (dynamic_cast<Constant*>(expr.left.get()) && dynamic_cast<Constant*>(expr.left.get())->GetConstant() == 1)
+    {
+        return expr.right->Clone();
+    }
 
-        // x*1 -> x
-        if (dynamic_cast<Constant*>(copy.left.get()) && dynamic_cast<Constant*>(copy.left.get())->GetConstant() == 1)
-        {
-            return copy.right->Clone();
-        }
+    if (dynamic_cast<Constant*>(expr.right.get()) && dynamic_cast<Constant*>(expr.right.get())->GetConstant() == 1)
+    {
+        return expr.left->Clone();
+    }
 
-        if (dynamic_cast<Constant*>(copy.right.get()) && dynamic_cast<Constant*>(copy.right.get())->GetConstant() == 1)
-        {
-            return copy.left->Clone();
-        }
+    auto evaluated = expr.EvaluateIfPossible();
+    if (evaluated) return evaluated;
 
-        auto evaluated = copy.EvaluateIfPossible();
-        if (evaluated) return evaluated;
-
-        return copy.Clone();
-
-    }(*this);
+    return expr.Clone();
 }
 
 std::unique_ptr<ExpressionBase> OperatorExponent::Simplified() const
@@ -262,7 +261,7 @@ std::unique_ptr<ExpressionBase> OperatorExponent::Simplified() const
 
         return copy.Clone();
 
-    }(*this);
+    }(OperatorExponent(*left, *right));
 }
 
 std::unique_ptr<ExpressionBase> OperatorUnaryMinus::Simplified() const
