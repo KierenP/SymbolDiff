@@ -21,8 +21,6 @@ public:
 	char GetVariable() const;
 	char GetOperator() const;
 
-private:
-
 	//Order must match that of data's types
 	enum class Type
 	{
@@ -30,6 +28,8 @@ private:
 		Variable,
 		Operator,
 	};
+
+private:
 
 	std::variant<double, char, char> data;
 

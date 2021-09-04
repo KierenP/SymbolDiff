@@ -1,6 +1,7 @@
 #include "Algorithms.h"
 
 #include <random>
+#include <typeindex>
 
 std::string Differentiate(const std::string& str, char wrt)
 {
@@ -120,8 +121,36 @@ std::optional<double> OperatorExponent::Evaluate(const std::unordered_map<char, 
         return std::nullopt;
 }
 
+std::optional<double> OperatorUnaryMinus::Evaluate(const std::unordered_map<char, double>& values) const
+{
+    auto r = right->Evaluate(values);
+
+    if (r)
+        return -(*r);
+    else
+        return std::nullopt;
+}
+
 // PRINT FUNCTIONS
 //---------------------------------
+
+int ExpressionBase::Priority() const
+{
+    static const std::unordered_map<std::type_index, int> priority =
+    {
+        { typeid(Constant),             10 },
+        { typeid(Variable),             10 },
+        { typeid(OperatorPlus),         1 },
+        { typeid(OperatorMinus),        1 },
+        { typeid(OperatorMultiply),     2 },
+        { typeid(OperatorDivide),       2 },
+        { typeid(OperatorUnaryMinus),   3 },
+        { typeid(OperatorExponent),     4 },
+        
+    };
+
+    return priority.at(typeid(*this));
+}
 
 std::string Constant::Print() const
 {
@@ -140,7 +169,7 @@ std::string Variable::Print() const
     return std::string(1, pronumeral);
 }
 
-std::string Operator::Print(const std::string& op, bool swap, bool leftAssosiative) const
+std::string BinaryOperator::Print(const std::string& op, bool swap, bool leftAssosiative) const
 {
     auto PrintExpr = [=](const ExpressionBase& left, const ExpressionBase& right)
     {
@@ -171,31 +200,39 @@ std::string Operator::Print(const std::string& op, bool swap, bool leftAssosiati
 
 std::string OperatorPlus::Print() const
 {
-    return Operator::Print("+", false, true);
+    return BinaryOperator::Print("+", false, true);
 }
 
 std::string OperatorMinus::Print() const
 {
-    return Operator::Print("-", false, true);
+    return BinaryOperator::Print("-", false, true);
 }
 
 std::string OperatorDivide::Print() const
 {
-    return Operator::Print("/", false, true);
+    return BinaryOperator::Print("/", false, true);
 }
 
 std::string OperatorMultiply::Print() const
 {
     // If we are going to print x*31 instead print out 31x
     if (dynamic_cast<Variable*>(left.get()) && dynamic_cast<Constant*>(right.get()))
-        return Operator::Print("", true, true);
+        return BinaryOperator::Print("", true, true);
     else
-        return Operator::Print("", false, true);
+        return BinaryOperator::Print("", false, true);
 }
 
 std::string OperatorExponent::Print() const
 {
-    return Operator::Print("^", false, false);
+    return BinaryOperator::Print("^", false, false);
+}
+
+std::string OperatorUnaryMinus::Print() const
+{
+    if (right->Priority() <= Priority())
+        return "-(" + right->Print() + ")";
+    else
+       return "-" + right->Print();
 }
 
 // DERIVATIVE FUNCTIONS
@@ -226,11 +263,11 @@ std::unique_ptr<ExpressionBase> OperatorMultiply::Derivative(char wrt) const
     return std::make_unique<
         OperatorPlus>(
             OperatorMultiply(
-                *left->Clone(),
-                *right->Derivative(wrt)),
+                left->Clone().release(),
+                right->Derivative(wrt).release()),
             OperatorMultiply(
-                *right->Clone(),
-                *left->Derivative(wrt)));
+                right->Clone().release(),
+                left->Derivative(wrt).release()));
 }
 
 std::unique_ptr<ExpressionBase> OperatorDivide::Derivative(char wrt) const
@@ -239,13 +276,13 @@ std::unique_ptr<ExpressionBase> OperatorDivide::Derivative(char wrt) const
         OperatorDivide>(
             OperatorMinus(
                 OperatorMultiply(
-                    *right->Clone(),
-                    *left->Derivative(wrt)),
+                    right->Clone().release(),
+                    left->Derivative(wrt).release()),
                 OperatorMultiply(
-                    *left->Clone(),
-                    *right->Derivative(wrt))),
+                    left->Clone().release(),
+                    right->Derivative(wrt).release())),
             OperatorExponent(
-                *right->Clone(),
+                right->Clone().release(),
                 Constant(2)));
 }
 
@@ -256,14 +293,21 @@ std::unique_ptr<ExpressionBase> OperatorExponent::Derivative(char wrt) const
 
     return std::make_unique<
         OperatorMultiply>(
-            *right->Clone(),
+            right->Clone().release(),
             OperatorMultiply(
-                *left->Derivative(wrt),
-                *std::make_unique<OperatorExponent>(
-                    *left->Clone(),
-                    *std::make_unique<OperatorMinus>(
-                        *right->Clone(),
+                left->Derivative(wrt).release(),
+                OperatorExponent(
+                    left->Clone().release(),
+                    OperatorMinus(
+                        right->Clone().release(),
                         Constant(1)))));
+}
+
+std::unique_ptr<ExpressionBase> OperatorUnaryMinus::Derivative(char wrt) const
+{
+    return std::make_unique<
+        OperatorUnaryMinus>(
+            right->Derivative(wrt).release());
 }
 
 //---------------------------------

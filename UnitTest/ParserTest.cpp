@@ -153,6 +153,30 @@ namespace Parser
 
 			Assert::IsTrue(*actual == *expected);
 		}
+
+		TEST_METHOD(unary_minus)
+		{
+			auto actual = BuildExpression(Tokenize("-x"));
+
+			decltype(actual) expected = std::make_unique<
+				OperatorUnaryMinus>(
+					Variable('x'));
+
+			Assert::IsTrue(*actual == *expected);
+		}
+
+		TEST_METHOD(unary_minus_in_expression)
+		{
+			auto actual = BuildExpression(Tokenize("y*-x"));
+
+			decltype(actual) expected = std::make_unique<
+				OperatorMultiply>(
+					Variable('y'),
+					OperatorUnaryMinus(
+						Variable('x')));
+
+			Assert::IsTrue(*actual == *expected);
+		}
 	};
 
 	TEST_CLASS(expression_Print)
@@ -172,6 +196,36 @@ namespace Parser
 		TEST_METHOD(powerAndProduct)
 		{
 			std::string input = "3x^5";
+
+			auto actual = BuildExpression(Tokenize(input))->Print();
+			decltype(actual) expected = input;
+
+			Assert::AreEqual(expected, actual);
+		}
+
+		TEST_METHOD(unaryMinusWithBrackets)
+		{
+			std::string input = "-(b+c)";
+
+			auto actual = BuildExpression(Tokenize(input))->Print();
+			decltype(actual) expected = input;
+
+			Assert::AreEqual(expected, actual);
+		}
+
+		TEST_METHOD(unaryMinusWithExponent)
+		{
+			std::string input = "-b^c";
+
+			auto actual = BuildExpression(Tokenize(input))->Print();
+			decltype(actual) expected = input;
+
+			Assert::AreEqual(expected, actual);
+		}
+
+		TEST_METHOD(unaryMinusWithExponentAndBrackets)
+		{
+			std::string input = "(-b)^c";
 
 			auto actual = BuildExpression(Tokenize(input))->Print();
 			decltype(actual) expected = input;
@@ -229,6 +283,15 @@ namespace Parser
 		{
 			auto actual = BuildExpression(Tokenize("3ax^a"))->Evaluate({ {'x', 2}, {'a', 3}});
 			double expected = 72;
+
+			Assert::IsTrue(actual.has_value());
+			Assert::AreEqual(expected, *actual);
+		}
+
+		TEST_METHOD(unary_minus)
+		{
+			auto actual = BuildExpression(Tokenize("3a(-x)^a"))->Evaluate({ {'x', 2}, {'a', 3} });
+			double expected = -72;
 
 			Assert::IsTrue(actual.has_value());
 			Assert::AreEqual(expected, *actual);
@@ -329,6 +392,35 @@ namespace Parser
 			decltype(actual) expected = BuildExpression(Tokenize("30x(x^2+2)^4"));
 
 			Assert::IsTrue(ExpressionsNumericallyEqual(*expected, *actual));
+		}
+
+		TEST_METHOD(QuotientRule)
+		{
+			auto actual = BuildExpression(Tokenize("(x+1)/(x-1)"))->Derivative('x')->Simplified();
+			decltype(actual) expected = BuildExpression(Tokenize("-2/(x-1)^2"));
+
+			Assert::IsTrue(ExpressionsNumericallyEqual(*expected, *actual));
+		}
+	};
+
+	TEST_CLASS(expression_equality)
+	{
+	public:
+
+		TEST_METHOD(same)
+		{
+			auto a = BuildExpression(Tokenize("x+y"));
+			auto b = BuildExpression(Tokenize("x+y"));
+
+			Assert::IsTrue(*a == *b);
+		}		
+		
+		TEST_METHOD(different)
+		{
+			auto a = BuildExpression(Tokenize("x+y"));
+			auto b = BuildExpression(Tokenize("x*y"));
+
+			Assert::IsFalse(*a == *b);
 		}
 	};
 }
