@@ -263,11 +263,11 @@ std::unique_ptr<ExpressionBase> OperatorMultiply::Derivative(char wrt) const
     return std::make_unique<
         OperatorPlus>(
             OperatorMultiply(
-                *left->Clone(),
-                *right->Derivative(wrt)),
+                left->Clone().release(),
+                right->Derivative(wrt).release()),
             OperatorMultiply(
-                *right->Clone(),
-                *left->Derivative(wrt)));
+                right->Clone().release(),
+                left->Derivative(wrt).release()));
 }
 
 std::unique_ptr<ExpressionBase> OperatorDivide::Derivative(char wrt) const
@@ -276,13 +276,13 @@ std::unique_ptr<ExpressionBase> OperatorDivide::Derivative(char wrt) const
         OperatorDivide>(
             OperatorMinus(
                 OperatorMultiply(
-                    *right->Clone(),
-                    *left->Derivative(wrt)),
+                    right->Clone().release(),
+                    left->Derivative(wrt).release()),
                 OperatorMultiply(
-                    *left->Clone(),
-                    *right->Derivative(wrt))),
+                    left->Clone().release(),
+                    right->Derivative(wrt).release())),
             OperatorExponent(
-                *right->Clone(),
+                right->Clone().release(),
                 Constant(2)));
 }
 
@@ -293,13 +293,13 @@ std::unique_ptr<ExpressionBase> OperatorExponent::Derivative(char wrt) const
 
     return std::make_unique<
         OperatorMultiply>(
-            *right->Clone(),
+            right->Clone().release(),
             OperatorMultiply(
-                *left->Derivative(wrt),
-                *std::make_unique<OperatorExponent>(
-                    *left->Clone(),
-                    *std::make_unique<OperatorMinus>(
-                        *right->Clone(),
+                left->Derivative(wrt).release(),
+                OperatorExponent(
+                    left->Clone().release(),
+                    OperatorMinus(
+                        right->Clone().release(),
                         Constant(1)))));
 }
 

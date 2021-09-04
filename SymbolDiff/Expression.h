@@ -80,6 +80,8 @@ class BinaryOperator : public ExpressionBase
 {
 public:
 	BinaryOperator(const ExpressionBase& l, const ExpressionBase& r) : left(l.Clone()), right(r.Clone()) {}
+	BinaryOperator(const ExpressionBase& l, ExpressionBase* r) : left(l.Clone()), right(r) {}
+	BinaryOperator(ExpressionBase* l, const ExpressionBase& r) : left(l), right(r.Clone()) {}
 	BinaryOperator(ExpressionBase* l, ExpressionBase* r) : left(l), right(r) {}
 
 	BinaryOperator(const BinaryOperator& other) : left(other.left->Clone()), right(other.right->Clone()) {}
