@@ -151,6 +151,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Algorithms.h" />
+    <ClInclude Include="Benchmark.h" />
     <ClInclude Include="Expression.h" />
     <ClInclude Include="Lexer.h" />
     <ClInclude Include="Parser.h" />

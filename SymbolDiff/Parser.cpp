@@ -43,7 +43,7 @@ std::unique_ptr<ExpressionBase> BuildExpression(std::vector<Token> input)
         // Close parenthesis
         else if (token->IsOperator() && token->GetOperator() == ')')
         {
-            ParseCloseParenthesis(nextIsUnary, operators, expressions, std::next(token) != input.end());
+            ParseCloseParenthesis(nextIsUnary, operators, expressions, std::next(token) == input.end());
         }
 
         // Other Operator
@@ -96,7 +96,7 @@ void ParseCloseParenthesis(bool& nextIsUnary, std::stack<std::string>& operators
 
     operators.pop();
 
-    if (operators.empty() && lastToken)
+    if (operators.empty() && !lastToken)
     {
         throw std::invalid_argument("Invalid expression: unbalanced parenthesis");
     }

@@ -159,7 +159,7 @@ std::unique_ptr<ExpressionBase> OperatorPlus::Simplify(OperatorPlus expr)
 
 std::unique_ptr<ExpressionBase> OperatorMinus::Simplified() const
 {
-    auto copy = std::make_unique<OperatorMinus>(*left->Simplified(), *right->Simplified());
+    auto copy = std::make_unique<OperatorMinus>(left->Simplified().release(), right->Simplified().release());
 
     auto evaluated = copy->EvaluateIfPossible();
     if (evaluated) return evaluated;
@@ -169,7 +169,7 @@ std::unique_ptr<ExpressionBase> OperatorMinus::Simplified() const
 
 std::unique_ptr<ExpressionBase> OperatorDivide::Simplified() const
 {
-    auto copy = std::make_unique<OperatorDivide>(*left->Simplified(), *right->Simplified());
+    auto copy = std::make_unique<OperatorDivide>(left->Simplified().release(), right->Simplified().release());
 
     auto evaluated = copy->EvaluateIfPossible();
     if (evaluated) return evaluated;

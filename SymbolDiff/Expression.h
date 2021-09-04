@@ -11,11 +11,10 @@ class ExpressionBase
 public:
 	virtual ~ExpressionBase() = default;
 
-	ExpressionBase() = default;
-
 	virtual std::optional<double> Evaluate(const std::unordered_map<char, double>& values = {}) const = 0;
 	virtual std::string Print() const = 0;
-	virtual std::unique_ptr<ExpressionBase> Clone() const = 0;
+	virtual std::unique_ptr<ExpressionBase> Clone() const & = 0;
+	virtual std::unique_ptr<ExpressionBase> Clone() && = 0;
 
 	virtual std::unique_ptr<ExpressionBase> Derivative(char wrt) const = 0;
 	virtual std::unique_ptr<ExpressionBase> Simplified() const;
@@ -49,7 +48,8 @@ public:
 	void GetConstantSubNodesFromPlus(std::vector<Constant*>& nodes) override;
 	void GetConstantSubNodesFromMultiply(std::vector<Constant*>& nodes) override;
 
-	std::unique_ptr<ExpressionBase> Clone() const override { return std::make_unique<std::decay_t<decltype(*this)>>(value); }
+	std::unique_ptr<ExpressionBase> Clone() const& override { return std::make_unique<std::decay_t<decltype(*this)>>(value); }
+	std::unique_ptr<ExpressionBase> Clone() && override { return std::make_unique<std::decay_t<decltype(*this)>>(value); }
 
 private:
 	bool isEqual(const ExpressionBase& other) const override;
@@ -68,7 +68,8 @@ public:
 	std::optional<double> Evaluate(const std::unordered_map<char, double>& values = {}) const override;
 	std::unique_ptr<ExpressionBase> Derivative(char wrt) const override;
 
-	std::unique_ptr<ExpressionBase> Clone() const override { return std::make_unique<std::decay_t<decltype(*this)>>(pronumeral); }
+	std::unique_ptr<ExpressionBase> Clone() const& override { return std::make_unique<std::decay_t<decltype(*this)>>(pronumeral); }
+	std::unique_ptr<ExpressionBase> Clone() && override { return std::make_unique<std::decay_t<decltype(*this)>>(pronumeral); }
 
 	void FillSetOfAllSubVariables(std::unordered_set<char>& variables) const override;
 
@@ -81,10 +82,8 @@ private:
 class BinaryOperator : public ExpressionBase
 {
 public:
-	BinaryOperator(const ExpressionBase& l, const ExpressionBase& r) : left(l.Clone()), right(r.Clone()) {}
-	BinaryOperator(const ExpressionBase& l, ExpressionBase* r) : left(l.Clone()), right(r) {}
-	BinaryOperator(ExpressionBase* l, const ExpressionBase& r) : left(l), right(r.Clone()) {}
-	BinaryOperator(ExpressionBase* l, ExpressionBase* r) : left(l), right(r) {}
+	template <typename T, typename U>
+	BinaryOperator(T&& l, U&& r);
 
 	void FillSetOfAllSubVariables(std::unordered_set<char>& variables) const override;
 
@@ -110,7 +109,8 @@ public:
 
 	void GetConstantSubNodesFromPlus(std::vector<Constant*>& nodes) override;
 
-	std::unique_ptr<ExpressionBase> Clone() const override { return std::make_unique<std::decay_t<decltype(*this)>>(*left, *right); }
+	std::unique_ptr<ExpressionBase> Clone() const& override { return std::make_unique<std::decay_t<decltype(*this)>>(*left, *right); }
+	std::unique_ptr<ExpressionBase> Clone() && override { return std::make_unique<std::decay_t<decltype(*this)>>(left.release(), right.release()); }
 
 private:
 	static std::unique_ptr<ExpressionBase> Simplify(OperatorPlus expr);
@@ -126,7 +126,8 @@ public:
 	std::unique_ptr<ExpressionBase> Simplified() const override;
 	std::string Print() const override;
 
-	std::unique_ptr<ExpressionBase> Clone() const override { return std::make_unique<std::decay_t<decltype(*this)>>(*left, *right); }
+	std::unique_ptr<ExpressionBase> Clone() const& override { return std::make_unique<std::decay_t<decltype(*this)>>(*left, *right); }
+	std::unique_ptr<ExpressionBase> Clone() && override { return std::make_unique<std::decay_t<decltype(*this)>>(left.release(), right.release()); }
 };
 
 class OperatorMultiply : public BinaryOperator
@@ -141,7 +142,8 @@ public:
 
 	void GetConstantSubNodesFromMultiply(std::vector<Constant*>& nodes) override;
 
-	std::unique_ptr<ExpressionBase> Clone() const override { return std::make_unique<std::decay_t<decltype(*this)>>(*left, *right); }
+	std::unique_ptr<ExpressionBase> Clone() const& override { return std::make_unique<std::decay_t<decltype(*this)>>(*left, *right); }
+	std::unique_ptr<ExpressionBase> Clone() && override { return std::make_unique<std::decay_t<decltype(*this)>>(left.release(), right.release()); }
 
 private:
 	static std::unique_ptr<ExpressionBase> Simplify(OperatorMultiply expr);
@@ -157,7 +159,8 @@ public:
 	std::unique_ptr<ExpressionBase> Simplified() const override;
 	std::string Print() const override;
 
-	std::unique_ptr<ExpressionBase> Clone() const override { return std::make_unique<std::decay_t<decltype(*this)>>(*left, *right); }
+	std::unique_ptr<ExpressionBase> Clone() const& override { return std::make_unique<std::decay_t<decltype(*this)>>(*left, *right); }
+	std::unique_ptr<ExpressionBase> Clone() && override { return std::make_unique<std::decay_t<decltype(*this)>>(left.release(), right.release()); }
 };
 
 class OperatorExponent : public BinaryOperator
@@ -170,14 +173,15 @@ public:
 	std::unique_ptr<ExpressionBase> Simplified() const override;
 	std::string Print() const override;
 
-	std::unique_ptr<ExpressionBase> Clone() const override { return std::make_unique<std::decay_t<decltype(*this)>>(*left, *right); }
+	std::unique_ptr<ExpressionBase> Clone() const& override { return std::make_unique<std::decay_t<decltype(*this)>>(*left, *right); }
+	std::unique_ptr<ExpressionBase> Clone() && override { return std::make_unique<std::decay_t<decltype(*this)>>(left.release(), right.release()); }
 };
 
 class UnaryOperator : public ExpressionBase
 {
 public:
-	explicit UnaryOperator(const ExpressionBase& r) : right(r.Clone()) {}
-	explicit UnaryOperator(ExpressionBase* r) : right(r) {}
+	template <typename T>
+	explicit UnaryOperator(T&& r);
 
 	void FillSetOfAllSubVariables(std::unordered_set<char>& variables) const override;
 
@@ -198,7 +202,18 @@ public:
 	std::unique_ptr<ExpressionBase> Simplified() const override;
 	std::string Print() const override;
 
-	std::unique_ptr<ExpressionBase> Clone() const override { return std::make_unique<std::decay_t<decltype(*this)>>(*right); }
+	std::unique_ptr<ExpressionBase> Clone() const& override { return std::make_unique<std::decay_t<decltype(*this)>>(*right); }
+	std::unique_ptr<ExpressionBase> Clone() && override { return std::make_unique<std::decay_t<decltype(*this)>>(right.release()); }
 };
 
+template<typename T, typename U>
+inline BinaryOperator::BinaryOperator(T&& l, U&& r) :
+	left([&]() { if constexpr (std::is_pointer_v<T>) return l; else return std::forward<T>(l).Clone(); }()),
+	right([&]() { if constexpr (std::is_pointer_v<U>) return r; else return std::forward<U>(r).Clone(); }())
+{}
 
+template<typename T>
+inline UnaryOperator::UnaryOperator(T&& r) :
+	right([&]() { if constexpr (std::is_pointer_v<T>) return r; else return std::forward<T>(r).Clone(); }())
+{
+}
