@@ -250,12 +250,12 @@ std::unique_ptr<ExpressionBase> Variable::Derivative(char wrt) const
 
 std::unique_ptr<ExpressionBase> OperatorPlus::Derivative(char wrt) const
 {
-    return std::make_unique<OperatorPlus>(*left->Derivative(wrt), *right->Derivative(wrt));
+    return std::make_unique<OperatorPlus>(left->Derivative(wrt).release(), right->Derivative(wrt).release());
 }
 
 std::unique_ptr<ExpressionBase> OperatorMinus::Derivative(char wrt) const
 {
-    return std::make_unique<OperatorMinus>(*left->Derivative(wrt), *right->Derivative(wrt));
+    return std::make_unique<OperatorMinus>(left->Derivative(wrt).release(), right->Derivative(wrt).release());
 }
 
 std::unique_ptr<ExpressionBase> OperatorMultiply::Derivative(char wrt) const
