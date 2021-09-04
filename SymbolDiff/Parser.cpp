@@ -89,7 +89,7 @@ std::unique_ptr<ExpressionBase> BuildExpression(std::vector<Token> input)
                 }
                 else
                 {
-                    throw std::invalid_argument("Invalid expression: only '-' can be unary, not '" + std::string{ token->GetVariable() } + "')");
+                    throw std::invalid_argument("Invalid expression: only '-' can be unary, not '" + std::string{ token->GetOperator() } + "')");
                 }
             }
             else

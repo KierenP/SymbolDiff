@@ -4,12 +4,9 @@
 int main()
 {
 	std::string input;
-
-	while (true)
+	
+	while (std::cout << "> f (x) = ", std::getline(std::cin, input))
 	{
-		std::cout << "> f (x) = ";
-		std::cin >> input;
-
 		std::string answer;
 
 		try

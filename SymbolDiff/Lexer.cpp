@@ -150,16 +150,16 @@ void AddImplicitMultiplication(std::vector<Token>& tokens)
 	//             right
 	//          c  v  op (
 	//         ____________
-	//   l  c | ?  x  .  x
+	//   l  c | .  x  .  x
 	//   e  v | x  x  .  x
 	//   f op | .  .  .  .
 	//   t  ) | x  x  .  x
-	//
-	// constant - constant should probably be an error detected elsewhere
+	// 
 
-	for (size_t i = 0; i < tokens.size() - 1; i++)
+	for (size_t i = 0; i + 1 < tokens.size(); i++)
 		if ((!tokens[i].IsOperator() || tokens[i].GetOperator() == ')') &&
-			(!tokens[i+1].IsOperator() || tokens[i+1].GetOperator() == '('))
+			(!tokens[i+1].IsOperator() || tokens[i+1].GetOperator() == '(') && 
+			!(tokens[i].IsConstant() && tokens[i + 1].IsConstant()))
 			tokens.insert(tokens.begin() + i + 1, Token::CreateOperator('*'));
 }
 
