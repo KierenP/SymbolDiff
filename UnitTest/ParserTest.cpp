@@ -177,6 +177,108 @@ namespace Parser
 
 			Assert::IsTrue(*actual == *expected);
 		}
+
+		TEST_METHOD(invalid_expressions_1)
+		{
+			bool threwError;
+
+			try
+			{
+				threwError = false;
+				BuildExpression(Tokenize("y++x"));
+			}
+			catch (const std::invalid_argument&)
+			{
+				threwError = true;
+			}
+			
+			Assert::IsTrue(threwError);
+		}
+
+		TEST_METHOD(invalid_expressions_2)
+		{
+			bool threwError;
+
+			try
+			{
+				threwError = false;
+				BuildExpression(Tokenize("(x"));
+			}
+			catch (const std::invalid_argument&)
+			{
+				threwError = true;
+			}
+
+			Assert::IsTrue(threwError);
+		}
+
+		TEST_METHOD(invalid_expressions_3)
+		{
+			bool threwError;
+
+			try
+			{
+				threwError = false;
+				BuildExpression(Tokenize("x)"));
+			}
+			catch (const std::invalid_argument&)
+			{
+				threwError = true;
+			}
+
+			Assert::IsTrue(threwError);
+		}
+
+		TEST_METHOD(invalid_expressions_4)
+		{
+			bool threwError;
+
+			try
+			{
+				threwError = false;
+				BuildExpression(Tokenize("y#x"));
+			}
+			catch (const std::invalid_argument&)
+			{
+				threwError = true;
+			}
+
+			Assert::IsTrue(threwError);
+		}
+
+		TEST_METHOD(invalid_expressions_5)
+		{
+			bool threwError;
+
+			try
+			{
+				threwError = false;
+				BuildExpression(Tokenize("y()"));
+			}
+			catch (const std::invalid_argument&)
+			{
+				threwError = true;
+			}
+
+			Assert::IsTrue(threwError);
+		}
+
+		TEST_METHOD(invalid_expressions_6)
+		{
+			bool threwError;
+
+			try
+			{
+				threwError = false;
+				BuildExpression(Tokenize("3 3"));
+			}
+			catch (const std::invalid_argument&)
+			{
+				threwError = true;
+			}
+
+			Assert::IsTrue(threwError);
+		}
 	};
 
 	TEST_CLASS(expression_Print)

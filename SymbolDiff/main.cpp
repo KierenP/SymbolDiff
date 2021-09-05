@@ -5,7 +5,7 @@
 
 int main()
 {
-	std::cout << "Benchmark: " << Benchmark(Differentiate, 100000, "(x+1)^2/(x-1)^2", 'x') << "ns\n";
+	//std::cout << "Benchmark: " << Benchmark(Differentiate, 100000, "(x+1)^2/(x-1)^2", 'x') << "ns\n";
 
 	std::string input;
 	
