@@ -14,10 +14,10 @@ namespace Parser
 		{
 			auto actual = BuildExpression(Tokenize("a+b"));
 
-			decltype(actual) expected = std::make_unique<
-				OperatorPlus>(
-					Variable('a'),
-					Variable('b'));
+			decltype(actual) expected = 
+				std::make_unique<OperatorPlus>(
+					std::make_unique<Variable>('a'),
+					std::make_unique<Variable>('b'));
 
 			Assert::IsTrue(*actual == *expected);
 		}
@@ -26,12 +26,12 @@ namespace Parser
 		{
 			auto actual = BuildExpression(Tokenize("a*b+c"));
 
-			decltype(actual) expected = std::make_unique<
-				OperatorPlus>(
-					OperatorMultiply(
-						Variable('a'),
-						Variable('b')),
-					Variable('c'));
+			decltype(actual) expected = 
+				std::make_unique<OperatorPlus>(
+					std::make_unique<OperatorMultiply>(
+						std::make_unique<Variable>('a'),
+						std::make_unique<Variable>('b')),
+					std::make_unique<Variable>('c'));
 
 			Assert::IsTrue(*actual == *expected);
 		}
@@ -40,12 +40,12 @@ namespace Parser
 		{
 			auto actual = BuildExpression(Tokenize("c+a*b"));
 
-			decltype(actual) expected = std::make_unique<
-				OperatorPlus>(
-					Variable('c'),
-					OperatorMultiply(
-						Variable('a'),
-						Variable('b')));
+			decltype(actual) expected = 
+				std::make_unique<OperatorPlus>(
+					std::make_unique<Variable>('c'),
+					std::make_unique<OperatorMultiply>(
+						std::make_unique<Variable>('a'),
+						std::make_unique<Variable>('b')));
 
 			Assert::IsTrue(*actual == *expected);
 		}
@@ -54,12 +54,12 @@ namespace Parser
 		{
 			auto actual = BuildExpression(Tokenize("(c+a)*b"));
 
-			decltype(actual) expected = std::make_unique<
-				OperatorMultiply>(
-					OperatorPlus(
-						Variable('c'),
-						Variable('a')),
-					Variable('b'));
+			decltype(actual) expected =
+				std::make_unique<OperatorMultiply>(
+					std::make_unique<OperatorPlus>(
+						std::make_unique<Variable>('c'),
+						std::make_unique<Variable>('a')),
+					std::make_unique<Variable>('b'));
 
 			Assert::IsTrue(*actual == *expected);
 		}
@@ -70,12 +70,12 @@ namespace Parser
 
 			auto actual = BuildExpression(Tokenize("a^b^c"));
 
-			decltype(actual) expected = std::make_unique <
-				OperatorExponent>(
-					Variable('a'),
-					OperatorExponent(
-						Variable('b'),
-						Variable('c')));
+			decltype(actual) expected =
+				std::make_unique<OperatorExponent>(
+					std::make_unique<Variable>('a'),
+					std::make_unique<OperatorExponent>(
+						std::make_unique<Variable>('b'),
+						std::make_unique<Variable>('c')));
 
 			Assert::IsTrue(*actual == *expected);
 		}
@@ -84,12 +84,12 @@ namespace Parser
 		{
 			auto actual = BuildExpression(Tokenize("(a^b)^c"));
 
-			decltype(actual) expected = std::make_unique<
-				OperatorExponent>(
-					OperatorExponent(
-						Variable('a'),
-						Variable('b')),
-					Variable('c'));
+			decltype(actual) expected =
+				std::make_unique<OperatorExponent>(
+					std::make_unique<OperatorExponent>(
+						std::make_unique<Variable>('a'),
+						std::make_unique<Variable>('b')),
+					std::make_unique<Variable>('c'));
 
 			Assert::IsTrue(*actual == *expected);
 		}
@@ -98,26 +98,26 @@ namespace Parser
 		{
 			auto actual = BuildExpression(Tokenize("(a^b^(32/d/e-f)^(x*31-m*n))"));
 
-			decltype(actual) expected = std::make_unique<
-				OperatorExponent>(
-					Variable('a'),
-						OperatorExponent(
-						Variable('b'),
-							OperatorExponent(
-							OperatorMinus(
-								OperatorDivide(
-									OperatorDivide(
-										Constant(32),
-										Variable('d')),
-									Variable('e')),
-								Variable('f')),
-							OperatorMinus(
-								OperatorMultiply(
-									Variable('x'),
-									Constant(31)),
-								OperatorMultiply(
-									Variable('m'),
-									Variable('n'))))));
+			decltype(actual) expected =
+				std::make_unique<OperatorExponent>(
+					std::make_unique<Variable>('a'),
+					std::make_unique<OperatorExponent>(
+						std::make_unique<Variable>('b'),
+						std::make_unique<OperatorExponent>(
+							std::make_unique<OperatorMinus>(
+								std::make_unique<OperatorDivide>(
+									std::make_unique<OperatorDivide>(
+										std::make_unique<Constant>(32),
+										std::make_unique<Variable>('d')),
+									std::make_unique<Variable>('e')),
+								std::make_unique<Variable>('f')),
+							std::make_unique<OperatorMinus>(
+								std::make_unique<OperatorMultiply>(
+									std::make_unique<Variable>('x'),
+									std::make_unique<Constant>(31)),
+								std::make_unique<OperatorMultiply>(
+									std::make_unique<Variable>('m'),
+									std::make_unique<Variable>('n'))))));
 
 			Assert::IsTrue(*actual == *expected);
 		}
@@ -126,14 +126,14 @@ namespace Parser
 		{
 			auto actual = BuildExpression(Tokenize("3ax^a"));
 
-			decltype(actual) expected = std::make_unique<
-				OperatorMultiply>(
-					OperatorMultiply(
-						Constant(3),
-						Variable('a')),
-					OperatorExponent(
-						Variable('x'), 
-						Variable('a')));
+			decltype(actual) expected =
+				std::make_unique<OperatorMultiply>(
+					std::make_unique<OperatorMultiply>(
+						std::make_unique<Constant>(3),
+						std::make_unique<Variable>('a')),
+					std::make_unique<OperatorExponent>(
+						std::make_unique<Variable>('x'), 
+						std::make_unique<Variable>('a')));
 
 			Assert::IsTrue(*actual == *expected);
 		}
@@ -142,14 +142,14 @@ namespace Parser
 		{
 			auto actual = BuildExpression(Tokenize("3(a(x^a))"));
 
-			decltype(actual) expected = std::make_unique<
-				OperatorMultiply>(
-					Constant(3),
-					OperatorMultiply(
-						Variable('a'),
-						OperatorExponent(
-							Variable('x'),
-							Variable('a'))));
+			decltype(actual) expected =
+				std::make_unique<OperatorMultiply>(
+					std::make_unique<Constant>(3),
+					std::make_unique<OperatorMultiply>(
+						std::make_unique<Variable>('a'),
+						std::make_unique<OperatorExponent>(
+							std::make_unique<Variable>('x'),
+							std::make_unique<Variable>('a'))));
 
 			Assert::IsTrue(*actual == *expected);
 		}
@@ -158,9 +158,9 @@ namespace Parser
 		{
 			auto actual = BuildExpression(Tokenize("-x"));
 
-			decltype(actual) expected = std::make_unique<
-				OperatorUnaryMinus>(
-					Variable('x'));
+			decltype(actual) expected =
+				std::make_unique<OperatorUnaryMinus>(
+					std::make_unique<Variable>('x'));
 
 			Assert::IsTrue(*actual == *expected);
 		}
@@ -169,11 +169,11 @@ namespace Parser
 		{
 			auto actual = BuildExpression(Tokenize("y*-x"));
 
-			decltype(actual) expected = std::make_unique<
-				OperatorMultiply>(
-					Variable('y'),
-					OperatorUnaryMinus(
-						Variable('x')));
+			decltype(actual) expected = 
+				std::make_unique<OperatorMultiply>(
+					std::make_unique<Variable>('y'),
+					std::make_unique<OperatorUnaryMinus>(
+						std::make_unique<Variable>('x')));
 
 			Assert::IsTrue(*actual == *expected);
 		}
