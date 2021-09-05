@@ -250,61 +250,61 @@ std::unique_ptr<ExpressionBase> Variable::Derivative(char wrt) const
 
 std::unique_ptr<ExpressionBase> OperatorPlus::Derivative(char wrt) const
 {
-    return std::make_unique<OperatorPlus>(left->Derivative(wrt).release(), right->Derivative(wrt).release());
+    return std::make_unique<OperatorPlus>(left->Derivative(wrt), right->Derivative(wrt));
 }
 
 std::unique_ptr<ExpressionBase> OperatorMinus::Derivative(char wrt) const
 {
-    return std::make_unique<OperatorMinus>(left->Derivative(wrt).release(), right->Derivative(wrt).release());
+    return std::make_unique<OperatorMinus>(left->Derivative(wrt), right->Derivative(wrt));
 }
 
 std::unique_ptr<ExpressionBase> OperatorMultiply::Derivative(char wrt) const
 {
-    return std::make_unique<
-        OperatorPlus>(
-            OperatorMultiply(
-                left->Clone().release(),
-                right->Derivative(wrt).release()),
-            OperatorMultiply(
-                right->Clone().release(),
-                left->Derivative(wrt).release()));
+    return
+        std::make_unique<OperatorPlus>(
+            std::make_unique<OperatorMultiply>(
+                left->Clone(),
+                right->Derivative(wrt)),
+            std::make_unique<OperatorMultiply>(
+                right->Clone(),
+                left->Derivative(wrt)));
 }
 
 std::unique_ptr<ExpressionBase> OperatorDivide::Derivative(char wrt) const
 {
-    return std::make_unique<
-        OperatorDivide>(
-            OperatorMinus(
-                OperatorMultiply(
-                    right->Clone().release(),
-                    left->Derivative(wrt).release()),
-                OperatorMultiply(
-                    left->Clone().release(),
-                    right->Derivative(wrt).release())),
-            OperatorExponent(
-                right->Clone().release(),
-                Constant(2)));
+    return 
+        std::make_unique<OperatorDivide>(
+            std::make_unique<OperatorMinus>(
+                std::make_unique<OperatorMultiply>(
+                    right->Clone(),
+                    left->Derivative(wrt)),
+                std::make_unique<OperatorMultiply>(
+                    left->Clone(),
+                    right->Derivative(wrt))),
+            std::make_unique<OperatorExponent>(
+                right->Clone(),
+                std::make_unique<Constant>(2)));
 }
 
 std::unique_ptr<ExpressionBase> OperatorExponent::Derivative(char wrt) const
 {
-    return std::make_unique<
-        OperatorMultiply>(
-            right->Clone().release(),
-            OperatorMultiply(
-                left->Derivative(wrt).release(),
-                OperatorExponent(
-                    left->Clone().release(),
-                    OperatorMinus(
-                        right->Clone().release(),
-                        Constant(1)))));
+    return 
+        std::make_unique<OperatorMultiply>(
+            right->Clone(),
+            std::make_unique<OperatorMultiply>(
+                left->Derivative(wrt),
+                std::make_unique<OperatorExponent>(
+                    left->Clone(),
+                    std::make_unique<OperatorMinus>(
+                        right->Clone(),
+                        std::make_unique<Constant>(1)))));
 }
 
 std::unique_ptr<ExpressionBase> OperatorUnaryMinus::Derivative(char wrt) const
 {
-    return std::make_unique<
-        OperatorUnaryMinus>(
-            right->Derivative(wrt).release());
+    return 
+        std::make_unique<OperatorUnaryMinus>(
+            right->Derivative(wrt));
 }
 
 //---------------------------------

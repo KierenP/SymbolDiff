@@ -40,6 +40,12 @@ std::unordered_set<char> ExpressionBase::GetSetOfAllSubVariables() const
     return variables;
 }
 
+BinaryOperator::BinaryOperator(std::unique_ptr<ExpressionBase>&& l, std::unique_ptr<ExpressionBase>&& r) :
+    left(std::move(l)), right(std::move(r)) {}
+
+UnaryOperator::UnaryOperator(std::unique_ptr<ExpressionBase>&& r) : 
+    right(std::move(r)) {}
+
 void UnaryOperator::FillSetOfAllSubVariables(std::unordered_set<char>& variables) const
 {
     right->FillSetOfAllSubVariables(variables);
@@ -105,14 +111,11 @@ std::unique_ptr<ExpressionBase> ExpressionBase::Simplified() const
 
 std::unique_ptr<ExpressionBase> OperatorPlus::Simplified() const
 {
-    return Simplify(OperatorPlus(*left, *right));
+    return Simplify(OperatorPlus(left->Simplified(), right->Simplified()));
 }
 
 std::unique_ptr<ExpressionBase> OperatorPlus::Simplify(OperatorPlus expr)
 {
-    expr.left = expr.left->Simplified();
-    expr.right = expr.right->Simplified();
-
     auto GetSum = [](std::vector<Constant*> vals)
     {
         return std::accumulate(vals.begin(), vals.end(), 0.0, [](double a, const Constant* b)
@@ -159,7 +162,7 @@ std::unique_ptr<ExpressionBase> OperatorPlus::Simplify(OperatorPlus expr)
 
 std::unique_ptr<ExpressionBase> OperatorMinus::Simplified() const
 {
-    auto copy = std::make_unique<OperatorMinus>(left->Simplified().release(), right->Simplified().release());
+    auto copy = std::make_unique<OperatorMinus>(left->Simplified(), right->Simplified());
 
     auto evaluated = copy->EvaluateIfPossible();
     if (evaluated) return evaluated;
@@ -169,7 +172,7 @@ std::unique_ptr<ExpressionBase> OperatorMinus::Simplified() const
 
 std::unique_ptr<ExpressionBase> OperatorDivide::Simplified() const
 {
-    auto copy = std::make_unique<OperatorDivide>(left->Simplified().release(), right->Simplified().release());
+    auto copy = std::make_unique<OperatorDivide>(left->Simplified(), right->Simplified());
 
     auto evaluated = copy->EvaluateIfPossible();
     if (evaluated) return evaluated;
@@ -179,14 +182,11 @@ std::unique_ptr<ExpressionBase> OperatorDivide::Simplified() const
 
 std::unique_ptr<ExpressionBase> OperatorMultiply::Simplified() const
 {
-    return Simplify(OperatorMultiply(*left, *right));
+    return Simplify(OperatorMultiply(left->Simplified(), right->Simplified()));
 }
 
 std::unique_ptr<ExpressionBase> OperatorMultiply::Simplify(OperatorMultiply expr)
 {
-    expr.left = expr.left->Simplified();
-    expr.right = expr.right->Simplified();
-
     auto GetProduct = [](std::vector<Constant*> vals)
     {
         return std::accumulate(vals.begin(), vals.end(), 1.0, [](double a, const Constant* b)
@@ -242,9 +242,6 @@ std::unique_ptr<ExpressionBase> OperatorExponent::Simplified() const
 {
     return [](OperatorExponent copy) -> std::unique_ptr<ExpressionBase>
     {
-        copy.left = copy.left->Simplified();
-        copy.right = copy.right->Simplified();
-
         // x^1 -> x, 1^x -> 1
         if (dynamic_cast<Constant*>(copy.left.get()) && dynamic_cast<Constant*>(copy.left.get())->GetConstant() == 1)
         {
@@ -261,12 +258,12 @@ std::unique_ptr<ExpressionBase> OperatorExponent::Simplified() const
 
         return copy.Clone();
 
-    }(OperatorExponent(*left, *right));
+    }(OperatorExponent(left->Simplified(), right->Simplified()));
 }
 
 std::unique_ptr<ExpressionBase> OperatorUnaryMinus::Simplified() const
 {
-    auto copy = std::make_unique<OperatorUnaryMinus>(right->Simplified().release());
+    auto copy = std::make_unique<OperatorUnaryMinus>(right->Simplified());
 
     auto evaluated = copy->EvaluateIfPossible();
     if (evaluated) return evaluated;

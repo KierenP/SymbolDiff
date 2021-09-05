@@ -192,15 +192,15 @@ std::unique_ptr<ExpressionBase> BuildBinaryExpression(std::stack<std::string>& o
     expressions.pop();
 
     if (op == "+")
-        return std::make_unique<OperatorPlus>(lhs.release(), rhs.release());
+        return std::make_unique<OperatorPlus>(std::move(lhs), std::move(rhs));
     if (op == "-")
-        return std::make_unique<OperatorMinus>(lhs.release(), rhs.release());
+        return std::make_unique<OperatorMinus>(std::move(lhs), std::move(rhs));
     if (op == "/")
-        return std::make_unique<OperatorDivide>(lhs.release(), rhs.release());
+        return std::make_unique<OperatorDivide>(std::move(lhs), std::move(rhs));
     if (op == "*")
-        return std::make_unique<OperatorMultiply>(lhs.release(), rhs.release());
+        return std::make_unique<OperatorMultiply>(std::move(lhs), std::move(rhs));
     if (op == "exponent")
-        return std::make_unique<OperatorExponent>(lhs.release(), rhs.release());
+        return std::make_unique<OperatorExponent>(std::move(lhs), std::move(rhs));
 
     throw std::invalid_argument("Invalid expression: could not build binary expression with operator '" + op + "'");
 }
@@ -220,7 +220,7 @@ std::unique_ptr<ExpressionBase> BuildUnaryExpression(std::stack<std::string>& op
     expressions.pop();
 
     if (op == "-")
-        return std::make_unique<OperatorUnaryMinus>(rhs.release());
+        return std::make_unique<OperatorUnaryMinus>(std::move(rhs));
 
     throw std::invalid_argument("Invalid expression: could not build unary expression with operator '" + op + "'");
 }
