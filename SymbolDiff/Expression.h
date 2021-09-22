@@ -32,7 +32,14 @@ private:
 	virtual bool isEqual(const ExpressionBase& other) const = 0;
 };
 
-class Constant : public ExpressionBase
+template <typename Derived>
+class Expression : public ExpressionBase
+{
+public:
+	std::unique_ptr<ExpressionBase> Clone() const override { return std::make_unique<Derived>(static_cast<Derived const&>(*this)); }
+};
+
+class Constant : public Expression<Constant>
 {
 public:
 	explicit Constant(double val) : value(val) {}
@@ -47,15 +54,13 @@ public:
 	void GetConstantSubNodesFromPlus(std::vector<Constant*>& nodes) override;
 	void GetConstantSubNodesFromMultiply(std::vector<Constant*>& nodes) override;
 
-	std::unique_ptr<ExpressionBase> Clone() const override { return std::make_unique<std::decay_t<decltype(*this)>>(value); }
-
 private:
 	bool isEqual(const ExpressionBase& other) const override;
 
 	double value;
 };
 
-class Variable : public ExpressionBase
+class Variable : public Expression<Variable>
 {
 public:
 	explicit Variable(char val) : pronumeral(val) {}
@@ -66,8 +71,6 @@ public:
 	std::optional<double> Evaluate(const std::unordered_map<char, double>& values = {}) const override;
 	std::unique_ptr<ExpressionBase> Derivative(char wrt) const override;
 
-	std::unique_ptr<ExpressionBase> Clone() const override { return std::make_unique<std::decay_t<decltype(*this)>>(pronumeral); }
-
 	void FillSetOfAllSubVariables(std::unordered_set<char>& variables) const override;
 
 private:
@@ -76,9 +79,16 @@ private:
 	char pronumeral;
 };
 
-class BinaryOperator : public ExpressionBase
+template <typename Derived>
+class BinaryOperator : public Expression<Derived>
 {
 public:
+	~BinaryOperator() override = default;
+	BinaryOperator(const BinaryOperator& other) : left(other.left->Clone()), right(other.right->Clone()) {}
+	BinaryOperator& operator=(const BinaryOperator& other) { left = other.left->Clone(); right = other.right->Clone(); }
+	BinaryOperator(BinaryOperator&& other) noexcept = default;
+	BinaryOperator& operator=(BinaryOperator&& other) noexcept = default;
+
 	BinaryOperator(std::unique_ptr<ExpressionBase>&& l, std::unique_ptr<ExpressionBase>&& r);
 
 	void FillSetOfAllSubVariables(std::unordered_set<char>& variables) const override;
@@ -93,7 +103,7 @@ protected:
 	std::unique_ptr<ExpressionBase> right;
 };
 
-class OperatorPlus : public BinaryOperator
+class OperatorPlus : public BinaryOperator<OperatorPlus>
 {
 public:
 	using BinaryOperator::BinaryOperator;
@@ -105,13 +115,11 @@ public:
 
 	void GetConstantSubNodesFromPlus(std::vector<Constant*>& nodes) override;
 
-	std::unique_ptr<ExpressionBase> Clone() const override { return std::make_unique<std::decay_t<decltype(*this)>>(left->Clone(), right->Clone()); }
-
 private:
-	static std::unique_ptr<ExpressionBase> Simplify(OperatorPlus expr);
+	static std::unique_ptr<ExpressionBase> Simplify(std::unique_ptr<OperatorPlus>&& expr);
 };
 
-class OperatorMinus : public BinaryOperator
+class OperatorMinus : public BinaryOperator<OperatorMinus>
 {
 public:
 	using BinaryOperator::BinaryOperator;
@@ -120,11 +128,9 @@ public:
 	std::unique_ptr<ExpressionBase> Derivative(char wrt) const override;
 	std::unique_ptr<ExpressionBase> Simplified() const override;
 	std::string Print() const override;
-
-	std::unique_ptr<ExpressionBase> Clone() const override { return std::make_unique<std::decay_t<decltype(*this)>>(left->Clone(), right->Clone()); }
 };
 
-class OperatorMultiply : public BinaryOperator
+class OperatorMultiply : public BinaryOperator<OperatorMultiply>
 {
 public:
 	using BinaryOperator::BinaryOperator;
@@ -136,41 +142,45 @@ public:
 
 	void GetConstantSubNodesFromMultiply(std::vector<Constant*>& nodes) override;
 
-	std::unique_ptr<ExpressionBase> Clone() const override { return std::make_unique<std::decay_t<decltype(*this)>>(left->Clone(), right->Clone()); }
+private:
+	static std::unique_ptr<ExpressionBase> Simplify(std::unique_ptr<OperatorMultiply>&& expr);
+};
+
+class OperatorDivide : public BinaryOperator<OperatorDivide>
+{
+public:
+	using BinaryOperator::BinaryOperator;
+
+	std::optional<double> Evaluate(const std::unordered_map<char, double>& values = {}) const override;
+	std::unique_ptr<ExpressionBase> Derivative(char wrt) const override;
+	std::unique_ptr<ExpressionBase> Simplified() const override;
+	std::string Print() const override;
+};
+
+class OperatorExponent : public BinaryOperator<OperatorExponent>
+{
+public:
+	using BinaryOperator::BinaryOperator;
+
+	std::optional<double> Evaluate(const std::unordered_map<char, double>& values = {}) const override;
+	std::unique_ptr<ExpressionBase> Derivative(char wrt) const override;
+	std::unique_ptr<ExpressionBase> Simplified() const override;
+	std::string Print() const override;
 
 private:
-	static std::unique_ptr<ExpressionBase> Simplify(OperatorMultiply expr);
+	static std::unique_ptr<ExpressionBase> Simplify(std::unique_ptr<OperatorExponent>&& expr);
 };
 
-class OperatorDivide : public BinaryOperator
+template <typename Derived>
+class UnaryOperator : public Expression<Derived>
 {
 public:
-	using BinaryOperator::BinaryOperator;
+	~UnaryOperator() override = default;
+	UnaryOperator(const UnaryOperator& other) : right(other.right->Clone()) {}
+	UnaryOperator& operator=(const UnaryOperator& other) { right = other.right->Clone(); }
+	UnaryOperator(UnaryOperator&& other) noexcept = default;
+	UnaryOperator& operator=(UnaryOperator&& other) noexcept = default;
 
-	std::optional<double> Evaluate(const std::unordered_map<char, double>& values = {}) const override;
-	std::unique_ptr<ExpressionBase> Derivative(char wrt) const override;
-	std::unique_ptr<ExpressionBase> Simplified() const override;
-	std::string Print() const override;
-
-	std::unique_ptr<ExpressionBase> Clone() const override { return std::make_unique<std::decay_t<decltype(*this)>>(left->Clone(), right->Clone()); }
-};
-
-class OperatorExponent : public BinaryOperator
-{
-public:
-	using BinaryOperator::BinaryOperator;
-
-	std::optional<double> Evaluate(const std::unordered_map<char, double>& values = {}) const override;
-	std::unique_ptr<ExpressionBase> Derivative(char wrt) const override;
-	std::unique_ptr<ExpressionBase> Simplified() const override;
-	std::string Print() const override;
-
-	std::unique_ptr<ExpressionBase> Clone() const override { return std::make_unique<std::decay_t<decltype(*this)>>(left->Clone(), right->Clone()); }
-};
-
-class UnaryOperator : public ExpressionBase
-{
-public:
 	explicit UnaryOperator(std::unique_ptr<ExpressionBase>&& r);
 
 	void FillSetOfAllSubVariables(std::unordered_set<char>& variables) const override;
@@ -182,7 +192,7 @@ protected:
 	std::unique_ptr<ExpressionBase> right;
 };
 
-class OperatorUnaryMinus : public UnaryOperator
+class OperatorUnaryMinus : public UnaryOperator<OperatorUnaryMinus>
 {
 public:
 	using UnaryOperator::UnaryOperator;
@@ -191,7 +201,5 @@ public:
 	std::unique_ptr<ExpressionBase> Derivative(char wrt) const override;
 	std::unique_ptr<ExpressionBase> Simplified() const override;
 	std::string Print() const override;
-
-	std::unique_ptr<ExpressionBase> Clone() const override { return std::make_unique<std::decay_t<decltype(*this)>>(right->Clone()); }
 };
 

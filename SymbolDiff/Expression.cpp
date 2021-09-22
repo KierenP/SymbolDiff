@@ -2,6 +2,7 @@
 
 #include <numeric>
 #include <string>
+#include <assert.h>
 
 bool ExpressionBase::operator==(const ExpressionBase& other) const
 {
@@ -18,19 +19,21 @@ bool Variable::isEqual(const ExpressionBase& other) const
     return pronumeral == static_cast<decltype(*this)>(other).pronumeral;
 }
 
-bool BinaryOperator::isEqual(const ExpressionBase& other) const
+template <typename Derived>
+bool BinaryOperator<Derived>::isEqual(const ExpressionBase& other) const
 {
     const auto& converted_other = static_cast<decltype(*this)>(other);
 
-    return (left == converted_other.left || (left && converted_other.left && *left == *converted_other.left)) &&
-        (right == converted_other.right || (right && converted_other.right && *right == *converted_other.right));
+    return (left && converted_other.left && *left == *converted_other.left) &&
+        (right && converted_other.right && *right == *converted_other.right);
 }
 
-bool UnaryOperator::isEqual(const ExpressionBase& other) const
+template <typename Derived>
+bool UnaryOperator<Derived>::isEqual(const ExpressionBase& other) const
 {
     const auto& converted_other = static_cast<decltype(*this)>(other);
 
-    return (right == converted_other.right || (right && converted_other.right && *right == *converted_other.right));
+    return (right && converted_other.right && *right == *converted_other.right);
 }
 
 std::unordered_set<char> ExpressionBase::GetSetOfAllSubVariables() const
@@ -40,18 +43,29 @@ std::unordered_set<char> ExpressionBase::GetSetOfAllSubVariables() const
     return variables;
 }
 
-BinaryOperator::BinaryOperator(std::unique_ptr<ExpressionBase>&& l, std::unique_ptr<ExpressionBase>&& r) :
-    left(std::move(l)), right(std::move(r)) {}
+template <typename Derived>
+BinaryOperator<Derived>::BinaryOperator(std::unique_ptr<ExpressionBase>&& l, std::unique_ptr<ExpressionBase>&& r) :
+    left(std::move(l)), right(std::move(r)) 
+{
+    assert(left);
+    assert(right);
+}
 
-UnaryOperator::UnaryOperator(std::unique_ptr<ExpressionBase>&& r) : 
-    right(std::move(r)) {}
+template <typename Derived>
+UnaryOperator<Derived>::UnaryOperator(std::unique_ptr<ExpressionBase>&& r) :
+    right(std::move(r)) 
+{
+    assert(right);
+}
 
-void UnaryOperator::FillSetOfAllSubVariables(std::unordered_set<char>& variables) const
+template <typename Derived>
+void UnaryOperator<Derived>::FillSetOfAllSubVariables(std::unordered_set<char>& variables) const
 {
     right->FillSetOfAllSubVariables(variables);
 }
 
-void BinaryOperator::FillSetOfAllSubVariables(std::unordered_set<char>& variables) const
+template <typename Derived>
+void BinaryOperator<Derived>::FillSetOfAllSubVariables(std::unordered_set<char>& variables) const
 {
     left->FillSetOfAllSubVariables(variables);
     right->FillSetOfAllSubVariables(variables);
@@ -111,10 +125,10 @@ std::unique_ptr<ExpressionBase> ExpressionBase::Simplified() const
 
 std::unique_ptr<ExpressionBase> OperatorPlus::Simplified() const
 {
-    return Simplify(OperatorPlus(left->Simplified(), right->Simplified()));
+    return Simplify(std::make_unique<OperatorPlus>(left->Simplified(), right->Simplified()));
 }
 
-std::unique_ptr<ExpressionBase> OperatorPlus::Simplify(OperatorPlus expr)
+std::unique_ptr<ExpressionBase> OperatorPlus::Simplify(std::unique_ptr<OperatorPlus>&& expr)
 {
     auto GetSum = [](std::vector<Constant*> vals)
     {
@@ -133,31 +147,31 @@ std::unique_ptr<ExpressionBase> OperatorPlus::Simplify(OperatorPlus expr)
     // We do this simplification first because it could allow for further simplifications later
 
     std::vector<Constant*> constantLeafs;
-    expr.GetConstantSubNodesFromPlus(constantLeafs);
+    expr->GetConstantSubNodesFromPlus(constantLeafs);
 
     double total = GetSum(constantLeafs);
 
     for (size_t i = 0; i < constantLeafs.size(); i++)
         constantLeafs[i]->SetConstant(i == 0 ? total : 0);
 
-    expr.left = expr.left->Simplified();
-    expr.right = expr.right->Simplified();
+    expr->left = expr->left->Simplified();
+    expr->right = expr->right->Simplified();
 
     // x+0 -> x
-    if (dynamic_cast<Constant*>(expr.left.get()) && dynamic_cast<Constant*>(expr.left.get())->GetConstant() == 0)
+    if (dynamic_cast<Constant*>(expr->left.get()) && dynamic_cast<Constant*>(expr->left.get())->GetConstant() == 0)
     {
-        return expr.right->Clone();
+        return expr->right->Clone();
     }
 
-    if (dynamic_cast<Constant*>(expr.right.get()) && dynamic_cast<Constant*>(expr.right.get())->GetConstant() == 0)
+    if (dynamic_cast<Constant*>(expr->right.get()) && dynamic_cast<Constant*>(expr->right.get())->GetConstant() == 0)
     {
-        return expr.left->Clone();
+        return expr->left->Clone();
     }
 
-    auto evaluated = expr.EvaluateIfPossible();
+    auto evaluated = expr->EvaluateIfPossible();
     if (evaluated) return evaluated;
 
-    return expr.Clone();
+    return std::move(expr);
 }
 
 std::unique_ptr<ExpressionBase> OperatorMinus::Simplified() const
@@ -182,10 +196,10 @@ std::unique_ptr<ExpressionBase> OperatorDivide::Simplified() const
 
 std::unique_ptr<ExpressionBase> OperatorMultiply::Simplified() const
 {
-    return Simplify(OperatorMultiply(left->Simplified(), right->Simplified()));
+    return Simplify(std::make_unique<OperatorMultiply>(left->Simplified(), right->Simplified()));
 }
 
-std::unique_ptr<ExpressionBase> OperatorMultiply::Simplify(OperatorMultiply expr)
+std::unique_ptr<ExpressionBase> OperatorMultiply::Simplify(std::unique_ptr<OperatorMultiply>&& expr)
 {
     auto GetProduct = [](std::vector<Constant*> vals)
     {
@@ -204,61 +218,62 @@ std::unique_ptr<ExpressionBase> OperatorMultiply::Simplify(OperatorMultiply expr
     // We do this simplification first because it could allow for further simplifications later
 
     std::vector<Constant*> constantLeafs;
-    expr.GetConstantSubNodesFromMultiply(constantLeafs);
+    expr->GetConstantSubNodesFromMultiply(constantLeafs);
 
     double total = GetProduct(constantLeafs);
 
     for (size_t i = 0; i < constantLeafs.size(); i++)
         constantLeafs[i]->SetConstant(i == 0 ? total : 1);
 
-    expr.left = expr.left->Simplified();
-    expr.right = expr.right->Simplified();
+    expr->left = expr->left->Simplified();
+    expr->right = expr->right->Simplified();
 
     // x*0 -> 0
-    if ((dynamic_cast<Constant*>(expr.left.get()) && dynamic_cast<Constant*>(expr.left.get())->GetConstant() == 0) ||
-        (dynamic_cast<Constant*>(expr.right.get()) && dynamic_cast<Constant*>(expr.right.get())->GetConstant() == 0))
+    if ((dynamic_cast<Constant*>(expr->left.get()) && dynamic_cast<Constant*>(expr->left.get())->GetConstant() == 0) ||
+        (dynamic_cast<Constant*>(expr->right.get()) && dynamic_cast<Constant*>(expr->right.get())->GetConstant() == 0))
     {
         return std::make_unique<Constant>(0);
     }
 
     // x*1 -> x
-    if (dynamic_cast<Constant*>(expr.left.get()) && dynamic_cast<Constant*>(expr.left.get())->GetConstant() == 1)
+    if (dynamic_cast<Constant*>(expr->left.get()) && dynamic_cast<Constant*>(expr->left.get())->GetConstant() == 1)
     {
-        return expr.right->Clone();
+        return expr->right->Clone();
     }
 
-    if (dynamic_cast<Constant*>(expr.right.get()) && dynamic_cast<Constant*>(expr.right.get())->GetConstant() == 1)
+    if (dynamic_cast<Constant*>(expr->right.get()) && dynamic_cast<Constant*>(expr->right.get())->GetConstant() == 1)
     {
-        return expr.left->Clone();
+        return expr->left->Clone();
     }
 
-    auto evaluated = expr.EvaluateIfPossible();
+    auto evaluated = expr->EvaluateIfPossible();
     if (evaluated) return evaluated;
 
-    return expr.Clone();
+    return std::move(expr);
+}
+
+std::unique_ptr<ExpressionBase> OperatorExponent::Simplify(std::unique_ptr<OperatorExponent>&& expr)
+{
+    // x^1 -> x, 1^x -> 1
+    if (dynamic_cast<Constant*>(expr->left.get()) && dynamic_cast<Constant*>(expr->left.get())->GetConstant() == 1)
+    {
+        return std::make_unique<Constant>(1);
+    }
+
+    if (dynamic_cast<Constant*>(expr->right.get()) && dynamic_cast<Constant*>(expr->right.get())->GetConstant() == 1)
+    {
+        return expr->left->Clone();
+    }
+
+    auto evaluated = expr->EvaluateIfPossible();
+    if (evaluated) return evaluated;
+
+    return std::move(expr);
 }
 
 std::unique_ptr<ExpressionBase> OperatorExponent::Simplified() const
 {
-    return [](OperatorExponent copy) -> std::unique_ptr<ExpressionBase>
-    {
-        // x^1 -> x, 1^x -> 1
-        if (dynamic_cast<Constant*>(copy.left.get()) && dynamic_cast<Constant*>(copy.left.get())->GetConstant() == 1)
-        {
-            return std::make_unique<Constant>(1);
-        }
-
-        if (dynamic_cast<Constant*>(copy.right.get()) && dynamic_cast<Constant*>(copy.right.get())->GetConstant() == 1)
-        {
-            return copy.left->Clone();
-        }
-
-        auto evaluated = copy.EvaluateIfPossible();
-        if (evaluated) return evaluated;
-
-        return copy.Clone();
-
-    }(OperatorExponent(left->Simplified(), right->Simplified()));
+    return Simplify(std::make_unique<OperatorExponent>(left->Simplified(), right->Simplified()));
 }
 
 std::unique_ptr<ExpressionBase> OperatorUnaryMinus::Simplified() const
@@ -273,22 +288,24 @@ std::unique_ptr<ExpressionBase> OperatorUnaryMinus::Simplified() const
 
 //---------------------------------
 
-std::unique_ptr<ExpressionBase> BinaryOperator::EvaluateIfPossible() const
+template <typename Derived>
+std::unique_ptr<ExpressionBase> BinaryOperator<Derived>::EvaluateIfPossible() const
 {
     // Evaluate to a constant if possible
 
-    auto eval = Evaluate();
+    auto eval = this->Evaluate();
     if (eval)
         return std::make_unique<Constant>(*eval);
     else
         return { nullptr };
 }
 
-std::unique_ptr<ExpressionBase> UnaryOperator::EvaluateIfPossible() const
+template <typename Derived>
+std::unique_ptr<ExpressionBase> UnaryOperator<Derived>::EvaluateIfPossible() const
 {
     // Evaluate to a constant if possible
 
-    auto eval = Evaluate();
+    auto eval = this->Evaluate();
     if (eval)
         return std::make_unique<Constant>(*eval);
     else
