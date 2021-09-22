@@ -169,7 +169,8 @@ std::string Variable::Print() const
     return std::string(1, pronumeral);
 }
 
-std::string BinaryOperator::PrintBinary(const std::string& op, bool swap, bool leftAssosiative) const
+template <typename Derived>
+std::string BinaryOperator<Derived>::PrintBinary(const std::string& op, bool swap, bool leftAssosiative) const
 {
     auto PrintExpr = [op, leftAssosiative](const ExpressionBase& l, const ExpressionBase& r, int priority)
     {
@@ -193,9 +194,9 @@ std::string BinaryOperator::PrintBinary(const std::string& op, bool swap, bool l
     };
 
     if (swap)
-        return PrintExpr(*right, *left, Priority());
+        return PrintExpr(*right, *left, this->Priority());
     else
-        return PrintExpr(*left, *right, Priority());
+        return PrintExpr(*left, *right, this->Priority());
 }
 
 std::string OperatorPlus::Print() const
