@@ -80,14 +80,10 @@ private:
 };
 
 template <typename Derived>
-class BinaryOperator : public Expression<Derived>
+class BinaryOperator : public ExpressionBase
 {
 public:
-	~BinaryOperator() override = default;
-	BinaryOperator(const BinaryOperator& other) : left(other.left->Clone()), right(other.right->Clone()) {}
-	BinaryOperator& operator=(const BinaryOperator& other) { left = other.left->Clone(); right = other.right->Clone(); }
-	BinaryOperator(BinaryOperator&& other) noexcept = default;
-	BinaryOperator& operator=(BinaryOperator&& other) noexcept = default;
+	std::unique_ptr<ExpressionBase> Clone() const override { return std::make_unique<Derived>(left->Clone(), right->Clone()); }
 
 	BinaryOperator(std::unique_ptr<ExpressionBase>&& l, std::unique_ptr<ExpressionBase>&& r);
 
@@ -172,14 +168,10 @@ private:
 };
 
 template <typename Derived>
-class UnaryOperator : public Expression<Derived>
+class UnaryOperator : public ExpressionBase
 {
 public:
-	~UnaryOperator() override = default;
-	UnaryOperator(const UnaryOperator& other) : right(other.right->Clone()) {}
-	UnaryOperator& operator=(const UnaryOperator& other) { right = other.right->Clone(); }
-	UnaryOperator(UnaryOperator&& other) noexcept = default;
-	UnaryOperator& operator=(UnaryOperator&& other) noexcept = default;
+	std::unique_ptr<ExpressionBase> Clone() const override { return std::make_unique<Derived>(right->Clone()); }
 
 	explicit UnaryOperator(std::unique_ptr<ExpressionBase>&& r);
 
